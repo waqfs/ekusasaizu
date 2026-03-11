@@ -55,9 +55,9 @@ export function Live() {
         </div>
 
         {/* Main Content */}
-        <div class="flex-1 grid grid-cols-3 gap-4 min-h-0">
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
           {/* Camera Feed */}
-          <div class="col-span-2 flex flex-col gap-4">
+          <div class="lg:col-span-2 flex flex-col gap-4">
             <div class="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden relative min-h-[400px]">
               {cameraOn ? (
                 <div class="absolute inset-0 flex items-center justify-center bg-gray-900">
@@ -98,7 +98,7 @@ export function Live() {
             </div>
 
             {/* Controls + Checkpoints */}
-            <div class="flex items-center gap-4">
+            <div class="flex items-center gap-4 flex-wrap">
               {/* Controls */}
               <div class="flex items-center gap-2">
                 <button
@@ -146,7 +146,7 @@ export function Live() {
               </div>
 
               {/* Checkpoint Progress */}
-              <div class="flex-1 flex items-center gap-1 ml-4">
+              <div class="flex-1 flex items-center gap-1 lg:ml-4 flex-wrap">
                 {mockCheckpoints.map((cp, i) => (
                   <div class="flex items-center gap-1">
                     <div
