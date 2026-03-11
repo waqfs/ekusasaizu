@@ -144,7 +144,7 @@ export function Exercise() {
         </div>
 
         {/* Exercise Grid */}
-        <div class="grid grid-cols-5 gap-3 mb-8">
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
           {exercises.map(ex => (
             <button
               onClick={() => setSelectedId(ex.id)}
@@ -168,7 +168,7 @@ export function Exercise() {
         </div>
 
         {/* Selected Exercise Detail */}
-        <div class="grid grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Description & Benefits */}
           <div class="col-span-2 space-y-6">
             <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
