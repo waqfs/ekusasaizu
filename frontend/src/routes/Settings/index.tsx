@@ -153,7 +153,7 @@ function AgentSettings() {
 
           <div>
             <label class="block text-sm font-medium text-gray-300 mb-3">Difficulty Adjustment</label>
-            <div class="flex gap-3">
+            <div class="flex gap-3 flex-wrap">
               {['Auto', 'Easy', 'Normal', 'Hard'].map(level => (
                 <button
                   class={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
