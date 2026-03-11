@@ -1,9 +1,9 @@
 import { render } from 'preact';
 import { LocationProvider, Router, Route } from 'preact-iso';
 
-import { Header } from './components/Header.jsx';
-import { Home } from './routes/Home/index.jsx';
-import { NotFound } from './routes/_404.jsx';
+import { Header } from '@component/Header.jsx';
+import { Home } from '@route/Home/index.jsx';
+import { NotFound } from '@route/_404.jsx';
 import './style.css';
 
 export function App() {
