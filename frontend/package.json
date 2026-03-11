@@ -12,7 +12,10 @@
 	},
 	"devDependencies": {
 		"@preact/preset-vite": "^2.10.2",
+		"@tailwindcss/vite": "^4.2.1",
+		"tailwindcss": "^4.2.1",
 		"typescript": "^5.9.3",
-		"vite": "^7.0.4"
+		"vite": "^7.0.4",
+		"vite-tsconfig-paths": "^6.1.1"
 	}
 }
