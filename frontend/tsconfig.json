@@ -6,6 +6,7 @@
     "moduleResolution": "bundler",
     "noEmit": true,
     "allowJs": true,
+    "allowImportingTsExtensions": true,
     "checkJs": true,
 
     /* Preact Config */

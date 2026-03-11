@@ -1,13 +1,13 @@
 import { render } from 'preact';
 import { LocationProvider, Router, Route } from 'preact-iso';
 
-import { Home } from '@route/Home/index.jsx';
-import { Login } from '@route/Login/index.jsx';
-import { Progress } from '@route/Progress/index.jsx';
-import { Exercise } from '@route/Exercise/index.jsx';
-import { Live } from '@route/Live/index.jsx';
-import { Settings } from '@route/Settings/index.jsx';
-import { NotFound } from '@route/_404.jsx';
+import { Home } from '@route/Home/index.tsx';
+import { Login } from '@route/Login/index.tsx';
+import { Progress } from '@route/Progress/index.tsx';
+import { Exercise } from '@route/Exercise/index.tsx';
+import { Live } from '@route/Live/index.tsx';
+import { Settings } from '@route/Settings/index.tsx';
+import { NotFound } from '@route/_404.tsx';
 import './style.css';
 
 export function App() {
