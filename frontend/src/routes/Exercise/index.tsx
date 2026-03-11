@@ -231,7 +231,7 @@ export function Exercise() {
                     </div>
                     <p class="text-xs text-stone-500 ml-7 mb-2">{cp.description}</p>
                     {cp.score !== null && (
-                      <div class="ml-7 h-1.5 bg-stone-800 overflow-hidden">
+                      <div class="ml-7 h-1 bg-stone-800 overflow-hidden">
                         <div class={`h-full ${scoreBar(cp.score)}`} style={{ width: `${cp.score}%` }} />
                       </div>
                     )}

@@ -117,7 +117,7 @@ export function Progress() {
                         {goal.progress}/{goal.target}
                       </span>
                     </div>
-                    <div class="h-2 bg-stone-800 overflow-hidden">
+                    <div class="h-1 bg-stone-800 overflow-hidden">
                       <div class="h-full bg-amber-500 transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
@@ -133,7 +133,7 @@ export function Progress() {
               {techniqueByExercise.map(ex => (
                 <div class="flex items-center gap-4">
                   <span class="text-sm text-stone-300 w-24">{ex.name}</span>
-                  <div class="flex-1 h-2.5 bg-stone-800 overflow-hidden">
+                  <div class="flex-1 h-1 bg-stone-800 overflow-hidden">
                     <div class={`h-full transition-all ${scoreBar(ex.score)}`} style={{ width: `${ex.score}%` }} />
                   </div>
                   <span class={`text-sm font-medium w-10 text-right ${scoreColor(ex.score)}`}>{ex.score}</span>
