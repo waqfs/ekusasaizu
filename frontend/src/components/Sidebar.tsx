@@ -51,16 +51,23 @@ const navItems = [
   },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { url } = useLocation();
 
   return (
-    <aside class="w-64 bg-gray-900/50 border-r border-gray-800 flex flex-col shrink-0">
-      <div class="p-6">
+    <aside class="w-64 h-full bg-gray-900 md:bg-gray-900/50 border-r border-gray-800 flex flex-col shrink-0">
+      <div class="p-6 flex items-center justify-between">
         <a href="/" class="block">
           <span class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
           <span class="block text-[11px] text-gray-500 tracking-widest uppercase mt-0.5">Ekusasaizu</span>
         </a>
+        {onClose && (
+          <button onClick={onClose} class="md:hidden text-gray-400 hover:text-gray-200">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <nav class="flex-1 px-3 space-y-1">
