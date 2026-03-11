@@ -195,7 +195,7 @@ export function Exercise() {
             </div>
 
             <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-6">
-              <h3 class="text-xs font-medium tracking-wide text-stone-400 uppercase tracking-wider mb-4">Benefits</h3>
+              <h3 class="text-xs font-medium text-stone-400 uppercase tracking-wider mb-4">Benefits</h3>
               <ul class="space-y-3">
                 {selected.benefits.map(b => (
                   <li class="flex items-start gap-3 text-sm text-stone-400">
@@ -212,7 +212,7 @@ export function Exercise() {
           {/* Checkpoints */}
           <div class="space-y-6">
             <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-6">
-              <h3 class="text-xs font-medium tracking-wide text-stone-400 uppercase tracking-wider mb-4">Technique Checkpoints</h3>
+              <h3 class="text-xs font-medium text-stone-400 uppercase tracking-wider mb-4">Technique Checkpoints</h3>
               <div class="space-y-4">
                 {selected.checkpoints.map((cp, i) => (
                   <div>
