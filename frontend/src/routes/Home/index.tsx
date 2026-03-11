@@ -1,108 +1,115 @@
 export function Home() {
   return (
-    <div class="min-h-screen bg-gray-950 text-gray-100">
+    <div class="min-h-screen bg-stone-950 text-stone-300">
       {/* Navigation */}
-      <nav class="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur-xl border-b border-gray-800/50">
-        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-          <div class="flex items-center gap-2">
-            <span class="text-xl font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
-          </div>
-          <div class="flex items-center gap-6">
-            <a href="#features" class="text-sm text-gray-400 hover:text-white transition-colors">
-              Features
-            </a>
-            <a href="#how-it-works" class="text-sm text-gray-400 hover:text-white transition-colors">
-              How It Works
-            </a>
-            <a href="/login" class="text-sm px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-gray-950 font-medium transition-colors">
-              Get Started
+      <nav class="fixed top-0 w-full z-50 bg-stone-950/90 backdrop-blur-sm">
+        <div class="max-w-7xl mx-auto px-8 md:px-12 h-20 flex items-center justify-between">
+          <span class="text-lg tracking-wide text-amber-400 font-light">エクササイズ</span>
+          <div class="flex items-center gap-8">
+            <a href="#features" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">Features</a>
+            <a href="#how-it-works" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">Process</a>
+            <a href="/login" class="text-xs tracking-widest uppercase px-5 py-2 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors">
+              Begin
             </a>
           </div>
         </div>
+        <div class="border-b border-stone-800/30" />
       </nav>
 
-      {/* Hero */}
-      <section class="relative pt-32 pb-20 px-6">
-        <div class="absolute inset-0 bg-linear-to-b from-cyan-500/5 via-transparent to-transparent" />
-        <div class="max-w-4xl mx-auto text-center relative">
-          <div class="inline-block mb-6 px-4 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-cyan-400 text-sm">
-            AI-Powered Exercise Coaching
+      {/* Hero — asymmetric, left-aligned */}
+      <section class="pt-40 pb-32 px-8 md:px-12">
+        <div class="max-w-7xl mx-auto grid md:grid-cols-2 gap-16 items-center">
+          <div>
+            <p class="text-xs tracking-[0.3em] uppercase text-stone-600 mb-8">AI-Guided Exercise Coaching</p>
+            <h1 class="text-4xl md:text-6xl font-extralight tracking-tight leading-tight text-stone-100">
+              Master Your
+              <br />
+              <span class="text-amber-400 font-light">Form.</span>
+            </h1>
+            <div class="w-12 h-px bg-amber-500/40 my-8" />
+            <p class="text-base font-light text-stone-500 max-w-md leading-relaxed">
+              An intelligent companion that observes your technique through your camera
+              and guides you toward perfect form — quietly, precisely, every rep.
+            </p>
+            <div class="mt-10 flex items-center gap-6">
+              <a
+                href="/login"
+                class="text-xs tracking-widest uppercase px-8 py-3 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors"
+              >
+                Start Training
+              </a>
+              <a href="#features" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">
+                Learn More →
+              </a>
+            </div>
           </div>
-          <h1 class="text-5xl md:text-7xl font-bold tracking-tight">
-            Master Your Form.
-            <br />
-            <span class="bg-linear-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">Elevate Your Fitness.</span>
-          </h1>
-          <p class="mt-6 text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            An intelligent exercise companion that watches your technique in real-time through your camera, provides instant feedback, and guides you toward
-            perfect form — every rep, every set.
-          </p>
-          <div class="mt-10 flex items-center justify-center gap-4">
-            <a
-              href="/login"
-              class="px-8 py-3 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-lg transition-all shadow-lg shadow-cyan-500/25"
-            >
-              Start Training
-            </a>
-            <a href="#features" class="px-8 py-3 rounded-xl border border-gray-700 hover:border-gray-500 text-gray-300 font-medium text-lg transition-colors">
-              Learn More
-            </a>
+          {/* Right side — reserved for zen image */}
+          <div class="hidden md:flex items-center justify-center">
+            <div class="w-full aspect-[4/5] border border-stone-800/30 flex items-center justify-center">
+              <div class="text-center">
+                <p class="text-6xl text-stone-800/60 font-extralight mb-4">禅</p>
+                <p class="text-[10px] tracking-[0.4em] uppercase text-stone-700">Image Placeholder</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Thin divider */}
+      <div class="max-w-7xl mx-auto px-8 md:px-12"><div class="border-t border-stone-800/20" /></div>
 
       {/* Features */}
-      <section id="features" class="py-20 px-6">
-        <div class="max-w-6xl mx-auto">
-          <h2 class="text-3xl font-bold text-center mb-4">Why エクササイズ?</h2>
-          <p class="text-gray-400 text-center mb-16 max-w-xl mx-auto">Combining AI vision with exercise science to revolutionize how you train.</p>
-          <div class="grid md:grid-cols-3 gap-6">
-            {features.map(feature => (
-              <div class="p-6 rounded-2xl bg-gray-900/50 border border-gray-800 hover:border-gray-700 transition-colors">
-                <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 mb-4">{feature.icon}</div>
-                <h3 class="text-lg font-semibold mb-2">{feature.title}</h3>
-                <p class="text-gray-400 text-sm leading-relaxed">{feature.description}</p>
+      <section id="features" class="py-24 px-8 md:px-12">
+        <div class="max-w-7xl mx-auto">
+          <p class="text-xs tracking-[0.3em] uppercase text-stone-600 mb-4">Why Ekusasaizu</p>
+          <h2 class="text-2xl font-extralight text-stone-200 mb-16">Purpose-built for proper technique.</h2>
+          <div class="grid md:grid-cols-3 gap-12">
+            {features.map((feature) => (
+              <div>
+                <div class="text-amber-400/70 mb-5">{feature.icon}</div>
+                <h3 class="text-sm font-medium tracking-wide text-stone-200 mb-3">{feature.title}</h3>
+                <p class="text-sm font-light text-stone-500 leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
+
+      {/* Thin divider */}
+      <div class="max-w-7xl mx-auto px-8 md:px-12"><div class="border-t border-stone-800/20" /></div>
 
       {/* How It Works */}
-      <section id="how-it-works" class="py-20 px-6 bg-gray-900/30">
-        <div class="max-w-6xl mx-auto">
-          <h2 class="text-3xl font-bold text-center mb-4">How It Works</h2>
-          <p class="text-gray-400 text-center mb-16 max-w-xl mx-auto">Get started in minutes — no special equipment required.</p>
-          <div class="grid md:grid-cols-4 gap-8">
+      <section id="how-it-works" class="py-24 px-8 md:px-12">
+        <div class="max-w-7xl mx-auto">
+          <p class="text-xs tracking-[0.3em] uppercase text-stone-600 mb-4">Process</p>
+          <h2 class="text-2xl font-extralight text-stone-200 mb-16">Four steps to better form.</h2>
+          <div class="grid md:grid-cols-4 gap-12">
             {steps.map((step, i) => (
-              <div class="text-center">
-                <div class="w-14 h-14 rounded-full bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold mx-auto mb-4">
-                  {i + 1}
-                </div>
-                <h3 class="font-semibold mb-2">{step.title}</h3>
-                <p class="text-gray-400 text-sm">{step.description}</p>
+              <div>
+                <span class="text-3xl font-extralight text-amber-500/40 mb-4 block">{String(i + 1).padStart(2, '0')}</span>
+                <h3 class="text-sm font-medium tracking-wide text-stone-200 mb-2">{step.title}</h3>
+                <p class="text-sm font-light text-stone-500 leading-relaxed">{step.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
+      {/* Thin divider */}
+      <div class="max-w-7xl mx-auto px-8 md:px-12"><div class="border-t border-stone-800/20" /></div>
+
       {/* Benefits */}
-      <section class="py-20 px-6">
-        <div class="max-w-6xl mx-auto">
-          <h2 class="text-3xl font-bold text-center mb-4">Benefits</h2>
-          <p class="text-gray-400 text-center mb-16 max-w-xl mx-auto">Everything you need to train smarter and safer.</p>
-          <div class="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-            {benefits.map(b => (
-              <div class="flex items-start gap-4 p-5 rounded-xl bg-gray-900/30 border border-gray-800/50">
-                <div class="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-400 shrink-0 mt-0.5">
-                  <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                </div>
+      <section class="py-24 px-8 md:px-12">
+        <div class="max-w-7xl mx-auto">
+          <p class="text-xs tracking-[0.3em] uppercase text-stone-600 mb-4">Benefits</p>
+          <h2 class="text-2xl font-extralight text-stone-200 mb-16">Train smarter. Train safer.</h2>
+          <div class="grid md:grid-cols-2 gap-x-16 gap-y-10 max-w-4xl">
+            {benefits.map((b) => (
+              <div class="flex items-start gap-4">
+                <div class="w-px h-10 bg-amber-500/30 shrink-0 mt-0.5" />
                 <div>
-                  <h4 class="font-medium text-gray-200 mb-1">{b.title}</h4>
-                  <p class="text-sm text-gray-500">{b.description}</p>
+                  <h4 class="text-sm font-medium text-stone-200 mb-1">{b.title}</h4>
+                  <p class="text-sm font-light text-stone-500 leading-relaxed">{b.description}</p>
                 </div>
               </div>
             ))}
@@ -111,13 +118,15 @@ export function Home() {
       </section>
 
       {/* CTA */}
-      <section class="py-20 px-6">
-        <div class="max-w-3xl mx-auto text-center">
-          <h2 class="text-4xl font-bold mb-4">Ready to perfect your form?</h2>
-          <p class="text-gray-400 mb-8">Join athletes improving their technique with AI-powered coaching.</p>
+      <section class="py-24 px-8 md:px-12 border-t border-stone-800/20">
+        <div class="max-w-7xl mx-auto">
+          <h2 class="text-3xl font-extralight text-stone-200 mb-4">Begin your practice.</h2>
+          <p class="text-sm font-light text-stone-500 mb-10 max-w-md">
+            Join those improving their technique with mindful, AI-guided coaching.
+          </p>
           <a
             href="/login"
-            class="inline-block px-10 py-4 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-lg transition-all shadow-lg shadow-cyan-500/25"
+            class="inline-block text-xs tracking-widest uppercase px-10 py-4 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors"
           >
             Sign Up Free
           </a>
@@ -125,19 +134,13 @@ export function Home() {
       </section>
 
       {/* Footer */}
-      <footer class="border-t border-gray-800 py-8 px-6">
-        <div class="max-w-6xl mx-auto flex items-center justify-between text-sm text-gray-500">
-          <span>© 2026 エクササイズ (Ekusasaizu)</span>
-          <div class="flex gap-6">
-            <a href="#" class="hover:text-gray-300 transition-colors">
-              Privacy
-            </a>
-            <a href="#" class="hover:text-gray-300 transition-colors">
-              Terms
-            </a>
-            <a href="#" class="hover:text-gray-300 transition-colors">
-              Contact
-            </a>
+      <footer class="border-t border-stone-800/20 py-10 px-8 md:px-12">
+        <div class="max-w-7xl mx-auto flex items-center justify-between text-xs text-stone-600">
+          <span class="tracking-wide">© 2026 エクササイズ</span>
+          <div class="flex gap-8">
+            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">Privacy</a>
+            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">Terms</a>
+            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">Contact</a>
           </div>
         </div>
       </footer>

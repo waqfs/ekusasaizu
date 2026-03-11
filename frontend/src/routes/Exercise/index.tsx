@@ -113,14 +113,14 @@ const exercises: ExerciseData[] = [
 
 function scoreColor(score: number) {
   if (score >= 90) return 'text-emerald-400';
-  if (score >= 80) return 'text-cyan-400';
+  if (score >= 80) return 'text-amber-400';
   if (score >= 70) return 'text-amber-400';
   return 'text-red-400';
 }
 
 function scoreBar(score: number) {
   if (score >= 90) return 'bg-emerald-500';
-  if (score >= 80) return 'bg-cyan-500';
+  if (score >= 80) return 'bg-amber-500';
   if (score >= 70) return 'bg-amber-500';
   return 'bg-red-500';
 }
@@ -139,8 +139,8 @@ export function Exercise() {
     <DashboardLayout>
       <div class="p-8">
         <div class="mb-8">
-          <h1 class="text-2xl font-bold text-gray-100">Exercises</h1>
-          <p class="text-gray-400 text-sm mt-1">Select an exercise to view details, technique checkpoints, and start a session.</p>
+          <h1 class="text-xl font-normal text-stone-200">Exercises</h1>
+          <p class="text-stone-500 text-sm font-light mt-1">Select an exercise to view details, technique checkpoints, and start a session.</p>
         </div>
 
         {/* Exercise Grid */}
@@ -148,11 +148,11 @@ export function Exercise() {
           {exercises.map(ex => (
             <button
               onClick={() => setSelectedId(ex.id)}
-              class={`p-4 rounded-xl border text-left transition-all ${
-                selectedId === ex.id ? 'bg-cyan-500/10 border-cyan-500/30 ring-1 ring-cyan-500/20' : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'
+              class={`p-4 rounded-lg border text-left transition-all ${
+                selectedId === ex.id ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-stone-900/50 border-stone-800 hover:border-stone-700'
               }`}
             >
-              <h3 class={`font-semibold text-sm ${selectedId === ex.id ? 'text-cyan-400' : 'text-gray-200'}`}>{ex.name}</h3>
+              <h3 class={`font-medium text-sm ${selectedId === ex.id ? 'text-amber-400' : 'text-stone-200'}`}>{ex.name}</h3>
               <div class="flex items-center gap-2 mt-2">
                 <span class={`text-xs px-2 py-0.5 rounded-full ${difficultyBadge(ex.difficulty)}`}>{ex.difficulty}</span>
               </div>
@@ -160,7 +160,7 @@ export function Exercise() {
                 {ex.overallScore !== null ? (
                   <span class={`text-2xl font-bold ${scoreColor(ex.overallScore)}`}>{ex.overallScore}</span>
                 ) : (
-                  <span class="text-sm text-gray-600">No data yet</span>
+                  <span class="text-sm text-stone-600">No data yet</span>
                 )}
               </div>
             </button>
@@ -171,33 +171,33 @@ export function Exercise() {
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Description & Benefits */}
           <div class="col-span-2 space-y-6">
-            <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
+            <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-6">
               <div class="flex items-start justify-between mb-4">
                 <div>
-                  <h2 class="text-xl font-bold text-gray-100">{selected.name}</h2>
+                  <h2 class="text-lg font-normal text-stone-200">{selected.name}</h2>
                   <div class="flex items-center gap-2 mt-2 flex-wrap">
                     <span class={`text-xs px-2.5 py-1 rounded-full font-medium ${difficultyBadge(selected.difficulty)}`}>{selected.difficulty}</span>
                     {selected.muscleGroups.map(mg => (
-                      <span class="text-xs px-2.5 py-1 rounded-full bg-gray-800 text-gray-400">{mg}</span>
+                      <span class="text-xs px-2.5 py-1 rounded-full bg-stone-800 text-stone-400">{mg}</span>
                     ))}
                   </div>
                 </div>
                 {selected.overallScore !== null && (
                   <div class="text-center">
                     <div class={`text-3xl font-bold ${scoreColor(selected.overallScore)}`}>{selected.overallScore}</div>
-                    <span class="text-xs text-gray-500">Overall Score</span>
+                    <span class="text-xs text-stone-500">Overall Score</span>
                   </div>
                 )}
               </div>
-              <p class="text-gray-400 text-sm leading-relaxed">{selected.description}</p>
+              <p class="text-stone-400 text-sm leading-relaxed">{selected.description}</p>
             </div>
 
-            <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
-              <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Benefits</h3>
+            <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-6">
+              <h3 class="text-xs font-medium tracking-wide text-stone-400 uppercase tracking-wider mb-4">Benefits</h3>
               <ul class="space-y-3">
                 {selected.benefits.map(b => (
-                  <li class="flex items-start gap-3 text-sm text-gray-400">
-                    <svg class="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                  <li class="flex items-start gap-3 text-sm text-stone-400">
+                    <svg class="w-5 h-5 text-amber-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                     {b}
@@ -209,27 +209,27 @@ export function Exercise() {
 
           {/* Checkpoints */}
           <div class="space-y-6">
-            <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
-              <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Technique Checkpoints</h3>
+            <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-6">
+              <h3 class="text-xs font-medium tracking-wide text-stone-400 uppercase tracking-wider mb-4">Technique Checkpoints</h3>
               <div class="space-y-4">
                 {selected.checkpoints.map((cp, i) => (
                   <div>
                     <div class="flex items-center justify-between mb-1">
                       <div class="flex items-center gap-2">
-                        <span class="w-5 h-5 rounded-full bg-gray-800 flex items-center justify-center text-[10px] text-gray-400 font-bold shrink-0">
+                        <span class="w-5 h-5 rounded-full bg-stone-800 flex items-center justify-center text-[10px] text-stone-400 font-bold shrink-0">
                           {i + 1}
                         </span>
-                        <span class="text-sm text-gray-300">{cp.name}</span>
+                        <span class="text-sm text-stone-300">{cp.name}</span>
                       </div>
                       {cp.score !== null ? (
                         <span class={`text-sm font-semibold ${scoreColor(cp.score)}`}>{cp.score}</span>
                       ) : (
-                        <span class="text-xs text-gray-600">—</span>
+                        <span class="text-xs text-stone-600">—</span>
                       )}
                     </div>
-                    <p class="text-xs text-gray-500 ml-7 mb-2">{cp.description}</p>
+                    <p class="text-xs text-stone-500 ml-7 mb-2">{cp.description}</p>
                     {cp.score !== null && (
-                      <div class="ml-7 h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <div class="ml-7 h-1.5 bg-stone-800 rounded-full overflow-hidden">
                         <div class={`h-full rounded-full ${scoreBar(cp.score)}`} style={{ width: `${cp.score}%` }} />
                       </div>
                     )}
@@ -240,7 +240,7 @@ export function Exercise() {
 
             <a
               href={`/live?exercise=${selected.id}`}
-              class="block w-full py-3.5 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-center transition-all shadow-lg shadow-cyan-500/20"
+              class="block w-full py-3.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-center transition-all shadow-md shadow-amber-900/20"
             >
               Start {selected.name}
             </a>
