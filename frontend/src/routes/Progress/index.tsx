@@ -93,7 +93,7 @@ export function Progress() {
                 <div class="flex-1 flex flex-col items-center gap-2">
                   <span class="text-xs text-gray-400">{day.minutes > 0 ? `${day.minutes}m` : '—'}</span>
                   <div class="w-full relative" style={{ height: `${height}%` }}>
-                    <div class={`w-full h-full rounded-lg ${day.minutes > 0 ? 'bg-gradient-to-t from-cyan-600 to-cyan-400' : 'bg-gray-800'}`} />
+                    <div class={`w-full h-full rounded-lg ${day.minutes > 0 ? 'bg-linear-to-t from-cyan-600 to-cyan-400' : 'bg-gray-800'}`} />
                   </div>
                   <span class="text-xs text-gray-500 font-medium">{day.day}</span>
                 </div>
@@ -118,7 +118,7 @@ export function Progress() {
                       </span>
                     </div>
                     <div class="h-2 bg-gray-800 rounded-full overflow-hidden">
-                      <div class="h-full bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      <div class="h-full bg-linear-to-r from-cyan-500 to-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                 );

@@ -58,7 +58,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
     <aside class="w-64 h-full bg-gray-900 md:bg-gray-900/50 border-r border-gray-800 flex flex-col shrink-0">
       <div class="p-6 flex items-center justify-between">
         <a href="/" class="block">
-          <span class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
+          <span class="text-2xl font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
           <span class="block text-[11px] text-gray-500 tracking-widest uppercase mt-0.5">Ekusasaizu</span>
         </a>
         {onClose && (
@@ -91,7 +91,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
       <div class="p-4 border-t border-gray-800">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+          <div class="w-9 h-9 rounded-full bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
             U
           </div>
           <div class="flex-1 min-w-0">

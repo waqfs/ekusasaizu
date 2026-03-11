@@ -27,7 +27,7 @@ export function DashboardLayout({ children }: { children: ComponentChildren }) {
               <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <span class="text-lg font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
+          <span class="text-lg font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
         </div>
         <main class="flex-1">{children}</main>
       </div>

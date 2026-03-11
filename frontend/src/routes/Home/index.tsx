@@ -5,7 +5,7 @@ export function Home() {
       <nav class="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur-xl border-b border-gray-800/50">
         <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
           <div class="flex items-center gap-2">
-            <span class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
+            <span class="text-xl font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
           </div>
           <div class="flex items-center gap-6">
             <a href="#features" class="text-sm text-gray-400 hover:text-white transition-colors">
@@ -23,7 +23,7 @@ export function Home() {
 
       {/* Hero */}
       <section class="relative pt-32 pb-20 px-6">
-        <div class="absolute inset-0 bg-gradient-to-b from-cyan-500/5 via-transparent to-transparent" />
+        <div class="absolute inset-0 bg-linear-to-b from-cyan-500/5 via-transparent to-transparent" />
         <div class="max-w-4xl mx-auto text-center relative">
           <div class="inline-block mb-6 px-4 py-1.5 rounded-full border border-cyan-500/20 bg-cyan-500/5 text-cyan-400 text-sm">
             AI-Powered Exercise Coaching
@@ -31,7 +31,7 @@ export function Home() {
           <h1 class="text-5xl md:text-7xl font-bold tracking-tight">
             Master Your Form.
             <br />
-            <span class="bg-gradient-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">Elevate Your Fitness.</span>
+            <span class="bg-linear-to-r from-cyan-400 via-blue-400 to-violet-400 bg-clip-text text-transparent">Elevate Your Fitness.</span>
           </h1>
           <p class="mt-6 text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
             An intelligent exercise companion that watches your technique in real-time through your camera, provides instant feedback, and guides you toward
@@ -40,7 +40,7 @@ export function Home() {
           <div class="mt-10 flex items-center justify-center gap-4">
             <a
               href="/login"
-              class="px-8 py-3 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-lg transition-all shadow-lg shadow-cyan-500/25"
+              class="px-8 py-3 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-lg transition-all shadow-lg shadow-cyan-500/25"
             >
               Start Training
             </a>
@@ -76,7 +76,7 @@ export function Home() {
           <div class="grid md:grid-cols-4 gap-8">
             {steps.map((step, i) => (
               <div class="text-center">
-                <div class="w-14 h-14 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold mx-auto mb-4">
+                <div class="w-14 h-14 rounded-full bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xl font-bold mx-auto mb-4">
                   {i + 1}
                 </div>
                 <h3 class="font-semibold mb-2">{step.title}</h3>
@@ -117,7 +117,7 @@ export function Home() {
           <p class="text-gray-400 mb-8">Join athletes improving their technique with AI-powered coaching.</p>
           <a
             href="/login"
-            class="inline-block px-10 py-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-lg transition-all shadow-lg shadow-cyan-500/25"
+            class="inline-block px-10 py-4 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-lg transition-all shadow-lg shadow-cyan-500/25"
           >
             Sign Up Free
           </a>

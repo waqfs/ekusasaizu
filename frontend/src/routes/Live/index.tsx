@@ -58,7 +58,7 @@ export function Live() {
         <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
           {/* Camera Feed */}
           <div class="lg:col-span-2 flex flex-col gap-4">
-            <div class="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden relative min-h-[400px]">
+            <div class="flex-1 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden relative min-h-100">
               {cameraOn ? (
                 <div class="absolute inset-0 flex items-center justify-center bg-gray-900">
                   <div class="text-center">

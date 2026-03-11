@@ -18,7 +18,7 @@ export function Login() {
         {/* Logo */}
         <div class="text-center mb-8">
           <a href="/">
-            <span class="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
+            <span class="text-3xl font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
           </a>
           <p class="text-gray-500 text-sm mt-2">{isSignUp ? 'Create your account' : 'Welcome back'}</p>
         </div>
@@ -91,7 +91,7 @@ export function Login() {
 
             <button
               type="submit"
-              class="w-full py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold transition-all shadow-lg shadow-cyan-500/20"
+              class="w-full py-3 rounded-lg bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold transition-all shadow-lg shadow-cyan-500/20"
             >
               {isSignUp ? 'Create Account' : 'Log In'}
             </button>

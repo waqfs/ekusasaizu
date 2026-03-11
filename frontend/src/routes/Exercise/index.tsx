@@ -240,7 +240,7 @@ export function Exercise() {
 
             <a
               href={`/live?exercise=${selected.id}`}
-              class="block w-full py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-center transition-all shadow-lg shadow-cyan-500/20"
+              class="block w-full py-3.5 rounded-xl bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold text-center transition-all shadow-lg shadow-cyan-500/20"
             >
               Start {selected.name}
             </a>
