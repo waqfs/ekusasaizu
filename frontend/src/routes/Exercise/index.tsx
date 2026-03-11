@@ -149,7 +149,9 @@ export function Exercise() {
             <button
               onClick={() => setSelectedId(ex.id)}
               class={`p-4 rounded-lg border text-left transition-all ${
-                selectedId === ex.id ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20' : 'bg-stone-900/50 border-stone-800 hover:border-stone-700'
+                selectedId === ex.id
+                  ? 'bg-amber-500/10 border-amber-500/30 ring-1 ring-amber-500/20'
+                  : 'bg-stone-900/50 border-stone-800 hover:border-stone-700'
               }`}
             >
               <h3 class={`font-medium text-sm ${selectedId === ex.id ? 'text-amber-400' : 'text-stone-200'}`}>{ex.name}</h3>
@@ -229,8 +231,8 @@ export function Exercise() {
                     </div>
                     <p class="text-xs text-stone-500 ml-7 mb-2">{cp.description}</p>
                     {cp.score !== null && (
-                      <div class="ml-7 h-1.5 bg-stone-800 rounded-full overflow-hidden">
-                        <div class={`h-full rounded-full ${scoreBar(cp.score)}`} style={{ width: `${cp.score}%` }} />
+                      <div class="ml-7 h-1.5 bg-stone-800 overflow-hidden">
+                        <div class={`h-full ${scoreBar(cp.score)}`} style={{ width: `${cp.score}%` }} />
                       </div>
                     )}
                   </div>

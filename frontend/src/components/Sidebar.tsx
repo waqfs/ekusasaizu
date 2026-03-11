@@ -71,15 +71,13 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       <nav class="flex-1 px-4 space-y-0.5">
-        {navItems.map((item) => {
+        {navItems.map(item => {
           const isActive = url === item.path || url.startsWith(item.path + '/');
           return (
             <a
               href={item.path}
               class={`flex items-center gap-3 px-3 py-2.5 text-sm font-light tracking-wide transition-all duration-150 ${
-                isActive
-                  ? 'text-amber-400 border-l-2 border-amber-400/50 -ml-px'
-                  : 'text-stone-500 hover:text-stone-300 border-l-2 border-transparent -ml-px'
+                isActive ? 'text-amber-400 border-l-2 border-amber-400/50 -ml-px' : 'text-stone-500 hover:text-stone-300 border-l-2 border-transparent -ml-px'
               }`}
             >
               {item.icon}
@@ -91,9 +89,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
 
       <div class="px-6 py-6 border-t border-stone-800/20">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-xs font-light shrink-0">
-            U
-          </div>
+          <div class="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-xs font-light shrink-0">U</div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-light text-stone-300 truncate">User</p>
             <p class="text-[11px] text-stone-600 truncate">user@example.com</p>

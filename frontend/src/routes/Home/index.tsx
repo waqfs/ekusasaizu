@@ -6,9 +6,16 @@ export function Home() {
         <div class="max-w-7xl mx-auto px-8 md:px-12 h-20 flex items-center justify-between">
           <span class="text-lg tracking-wide text-amber-400 font-light">エクササイズ</span>
           <div class="flex items-center gap-8">
-            <a href="#features" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">Features</a>
-            <a href="#how-it-works" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">Process</a>
-            <a href="/login" class="text-xs tracking-widest uppercase px-5 py-2 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors">
+            <a href="#features" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">
+              Features
+            </a>
+            <a href="#how-it-works" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">
+              Process
+            </a>
+            <a
+              href="/login"
+              class="text-xs tracking-widest uppercase px-5 py-2 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors"
+            >
               Begin
             </a>
           </div>
@@ -28,14 +35,10 @@ export function Home() {
             </h1>
             <div class="w-12 h-px bg-amber-500/40 my-8" />
             <p class="text-base font-light text-stone-500 max-w-md leading-relaxed">
-              An intelligent companion that observes your technique through your camera
-              and guides you toward perfect form — quietly, precisely, every rep.
+              An intelligent companion that observes your technique through your camera and guides you toward perfect form — quietly, precisely, every rep.
             </p>
             <div class="mt-10 flex items-center gap-6">
-              <a
-                href="/login"
-                class="text-xs tracking-widest uppercase px-8 py-3 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors"
-              >
+              <a href="/login" class="text-xs tracking-widest uppercase px-8 py-3 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors">
                 Start Training
               </a>
               <a href="#features" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">
@@ -56,7 +59,9 @@ export function Home() {
       </section>
 
       {/* Thin divider */}
-      <div class="max-w-7xl mx-auto px-8 md:px-12"><div class="border-t border-stone-800/20" /></div>
+      <div class="max-w-7xl mx-auto px-8 md:px-12">
+        <div class="border-t border-stone-800/20" />
+      </div>
 
       {/* Features */}
       <section id="features" class="py-24 px-8 md:px-12">
@@ -64,7 +69,7 @@ export function Home() {
           <p class="text-xs tracking-[0.3em] uppercase text-stone-600 mb-4">Why Ekusasaizu</p>
           <h2 class="text-2xl font-extralight text-stone-200 mb-16">Purpose-built for proper technique.</h2>
           <div class="grid md:grid-cols-3 gap-12">
-            {features.map((feature) => (
+            {features.map(feature => (
               <div>
                 <div class="text-amber-400/70 mb-5">{feature.icon}</div>
                 <h3 class="text-sm font-medium tracking-wide text-stone-200 mb-3">{feature.title}</h3>
@@ -76,7 +81,9 @@ export function Home() {
       </section>
 
       {/* Thin divider */}
-      <div class="max-w-7xl mx-auto px-8 md:px-12"><div class="border-t border-stone-800/20" /></div>
+      <div class="max-w-7xl mx-auto px-8 md:px-12">
+        <div class="border-t border-stone-800/20" />
+      </div>
 
       {/* How It Works */}
       <section id="how-it-works" class="py-24 px-8 md:px-12">
@@ -96,7 +103,9 @@ export function Home() {
       </section>
 
       {/* Thin divider */}
-      <div class="max-w-7xl mx-auto px-8 md:px-12"><div class="border-t border-stone-800/20" /></div>
+      <div class="max-w-7xl mx-auto px-8 md:px-12">
+        <div class="border-t border-stone-800/20" />
+      </div>
 
       {/* Benefits */}
       <section class="py-24 px-8 md:px-12">
@@ -104,7 +113,7 @@ export function Home() {
           <p class="text-xs tracking-[0.3em] uppercase text-stone-600 mb-4">Benefits</p>
           <h2 class="text-2xl font-extralight text-stone-200 mb-16">Train smarter. Train safer.</h2>
           <div class="grid md:grid-cols-2 gap-x-16 gap-y-10 max-w-4xl">
-            {benefits.map((b) => (
+            {benefits.map(b => (
               <div class="flex items-start gap-4">
                 <div class="w-px h-10 bg-amber-500/30 shrink-0 mt-0.5" />
                 <div>
@@ -121,13 +130,8 @@ export function Home() {
       <section class="py-24 px-8 md:px-12 border-t border-stone-800/20">
         <div class="max-w-7xl mx-auto">
           <h2 class="text-3xl font-extralight text-stone-200 mb-4">Begin your practice.</h2>
-          <p class="text-sm font-light text-stone-500 mb-10 max-w-md">
-            Join those improving their technique with mindful, AI-guided coaching.
-          </p>
-          <a
-            href="/login"
-            class="inline-block text-xs tracking-widest uppercase px-10 py-4 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors"
-          >
+          <p class="text-sm font-light text-stone-500 mb-10 max-w-md">Join those improving their technique with mindful, AI-guided coaching.</p>
+          <a href="/login" class="inline-block text-xs tracking-widest uppercase px-10 py-4 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors">
             Sign Up Free
           </a>
         </div>
@@ -138,9 +142,15 @@ export function Home() {
         <div class="max-w-7xl mx-auto flex items-center justify-between text-xs text-stone-600">
           <span class="tracking-wide">© 2026 エクササイズ</span>
           <div class="flex gap-8">
-            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">Privacy</a>
-            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">Terms</a>
-            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">Contact</a>
+            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">
+              Privacy
+            </a>
+            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">
+              Terms
+            </a>
+            <a href="#" class="tracking-widest uppercase hover:text-stone-400 transition-colors">
+              Contact
+            </a>
           </div>
         </div>
       </footer>
