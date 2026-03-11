@@ -73,7 +73,7 @@ export function Progress() {
         </div>
 
         {/* Stats Cards */}
-        <div class="grid grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, i) => (
             <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-5">
               <p class="text-sm text-gray-400 mb-1">{stat.label}</p>
@@ -102,7 +102,7 @@ export function Progress() {
           </div>
         </div>
 
-        <div class="grid grid-cols-2 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Goals */}
           <div class="bg-gray-900/50 border border-gray-800 rounded-xl p-6">
             <h2 class="text-lg font-semibold text-gray-200 mb-5">Current Goals</h2>
