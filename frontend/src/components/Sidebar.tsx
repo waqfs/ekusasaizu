@@ -55,31 +55,29 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   const { url } = useLocation();
 
   return (
-    <aside class="w-64 h-full bg-gray-900 md:bg-gray-900/50 border-r border-gray-800 flex flex-col shrink-0">
-      <div class="p-6 flex items-center justify-between">
+    <aside class="w-60 h-full bg-stone-950 md:bg-stone-950/80 border-r border-stone-800/30 flex flex-col shrink-0">
+      <div class="px-6 py-8 flex items-center justify-between">
         <a href="/" class="block">
-          <span class="text-2xl font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
-          <span class="block text-[11px] text-gray-500 tracking-widest uppercase mt-0.5">Ekusasaizu</span>
+          <span class="text-lg font-light tracking-wide text-amber-400">エクササイズ</span>
+          <span class="block text-[10px] text-stone-600 tracking-[0.25em] uppercase mt-1">Ekusasaizu</span>
         </a>
         {onClose && (
-          <button onClick={onClose} class="md:hidden text-gray-400 hover:text-gray-200">
-            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+          <button onClick={onClose} class="md:hidden text-stone-500 hover:text-stone-300">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         )}
       </div>
 
-      <nav class="flex-1 px-3 space-y-1">
+      <nav class="flex-1 px-4 space-y-0.5">
         {navItems.map(item => {
           const isActive = url === item.path || url.startsWith(item.path + '/');
           return (
             <a
               href={item.path}
-              class={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+              class={`flex items-center gap-3 px-3 py-2.5 text-sm font-light tracking-wide transition-all duration-150 ${
+                isActive ? 'text-amber-400 border-l-2 border-amber-400/50 -ml-px' : 'text-stone-500 hover:text-stone-300 border-l-2 border-transparent -ml-px'
               }`}
             >
               {item.icon}
@@ -89,17 +87,15 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
         })}
       </nav>
 
-      <div class="p-4 border-t border-gray-800">
+      <div class="px-6 py-6 border-t border-stone-800/20">
         <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-full bg-linear-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-            U
-          </div>
+          <div class="w-8 h-8 rounded-full bg-stone-800 flex items-center justify-center text-stone-400 text-xs font-light shrink-0">U</div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-medium text-gray-200 truncate">User</p>
-            <p class="text-xs text-gray-500 truncate">user@example.com</p>
+            <p class="text-sm font-light text-stone-300 truncate">User</p>
+            <p class="text-[11px] text-stone-600 truncate">user@example.com</p>
           </div>
         </div>
-        <a href="/login" class="mt-3 block text-center text-xs text-gray-500 hover:text-gray-300 transition-colors">
+        <a href="/login" class="mt-3 block text-center text-[11px] tracking-widest uppercase text-stone-600 hover:text-stone-400 transition-colors">
           Sign Out
         </a>
       </div>

@@ -13,31 +13,31 @@ export function Login() {
   };
 
   return (
-    <div class="min-h-screen bg-gray-950 flex items-center justify-center px-6">
+    <div class="min-h-screen bg-stone-950 flex items-center justify-center px-6">
       <div class="w-full max-w-md">
         {/* Logo */}
         <div class="text-center mb-8">
           <a href="/">
-            <span class="text-3xl font-bold bg-linear-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">エクササイズ</span>
+            <span class="text-2xl font-light tracking-wide text-amber-400">エクササイズ</span>
           </a>
-          <p class="text-gray-500 text-sm mt-2">{isSignUp ? 'Create your account' : 'Welcome back'}</p>
+          <p class="text-stone-600 text-sm font-light mt-2">{isSignUp ? 'Create your account' : 'Welcome back'}</p>
         </div>
 
         {/* Form Card */}
-        <div class="bg-gray-900/50 border border-gray-800 rounded-2xl p-8">
-          <div class="flex mb-8 bg-gray-800/50 rounded-lg p-1">
+        <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-8">
+          <div class="flex mb-8 bg-stone-800/50 p-1">
             <button
               onClick={() => setIsSignUp(false)}
-              class={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                !isSignUp ? 'bg-cyan-500 text-gray-950' : 'text-gray-400 hover:text-gray-200'
+              class={`flex-1 py-2 text-sm font-light tracking-wide transition-colors ${
+                !isSignUp ? 'bg-amber-500 text-stone-950' : 'text-stone-400 hover:text-stone-200'
               }`}
             >
               Log In
             </button>
             <button
               onClick={() => setIsSignUp(true)}
-              class={`flex-1 py-2 text-sm font-medium rounded-md transition-colors ${
-                isSignUp ? 'bg-cyan-500 text-gray-950' : 'text-gray-400 hover:text-gray-200'
+              class={`flex-1 py-2 text-sm font-light tracking-wide transition-colors ${
+                isSignUp ? 'bg-amber-500 text-stone-950' : 'text-stone-400 hover:text-stone-200'
               }`}
             >
               Sign Up
@@ -46,44 +46,44 @@ export function Login() {
 
           <form onSubmit={handleSubmit} class="space-y-5">
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1.5">Username</label>
+              <label class="block text-xs font-light tracking-wide text-stone-500 mb-1.5">Username</label>
               <input
                 type="text"
                 value={username}
                 onInput={e => setUsername((e.target as HTMLInputElement).value)}
-                class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+                class="w-full px-4 py-2.5 bg-stone-900/50 border border-stone-800/30 text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
                 placeholder="Enter your username"
               />
             </div>
 
             {isSignUp && (
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1.5">Email</label>
+                <label class="block text-xs font-light tracking-wide text-stone-500 mb-1.5">Email</label>
                 <input
                   type="email"
-                  class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+                  class="w-full px-4 py-2.5 bg-stone-900/50 border border-stone-800/30 text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
                   placeholder="Enter your email"
                 />
               </div>
             )}
 
             <div>
-              <label class="block text-sm font-medium text-gray-300 mb-1.5">Password</label>
+              <label class="block text-xs font-light tracking-wide text-stone-500 mb-1.5">Password</label>
               <input
                 type="password"
                 value={password}
                 onInput={e => setPassword((e.target as HTMLInputElement).value)}
-                class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+                class="w-full px-4 py-2.5 bg-stone-900/50 border border-stone-800/30 text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
                 placeholder="Enter your password"
               />
             </div>
 
             {isSignUp && (
               <div>
-                <label class="block text-sm font-medium text-gray-300 mb-1.5">Confirm Password</label>
+                <label class="block text-xs font-light tracking-wide text-stone-500 mb-1.5">Confirm Password</label>
                 <input
                   type="password"
-                  class="w-full px-4 py-2.5 rounded-lg bg-gray-800 border border-gray-700 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
+                  class="w-full px-4 py-2.5 bg-stone-900/50 border border-stone-800/30 text-stone-100 placeholder-stone-500 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
                   placeholder="Confirm your password"
                 />
               </div>
@@ -91,15 +91,15 @@ export function Login() {
 
             <button
               type="submit"
-              class="w-full py-3 rounded-lg bg-linear-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-semibold transition-all shadow-lg shadow-cyan-500/20"
+              class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-stone-950 font-light tracking-widest uppercase text-xs transition-all"
             >
               {isSignUp ? 'Create Account' : 'Log In'}
             </button>
           </form>
 
           {!isSignUp && (
-            <p class="text-center text-sm text-gray-500 mt-4">
-              <a href="#" class="text-cyan-400 hover:text-cyan-300 transition-colors">
+            <p class="text-center text-sm text-stone-500 mt-4">
+              <a href="#" class="text-amber-400 hover:text-amber-300 transition-colors">
                 Forgot password?
               </a>
             </p>
