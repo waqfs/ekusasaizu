@@ -37,13 +37,13 @@ export function usePoseStream(videoRef: RefObject<HTMLVideoElement | null>) {
       const landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: {
           modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+            'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
         },
         runningMode: 'VIDEO',
         numPoses: 1,
-        minPoseDetectionConfidence: 0.5,
-        minPosePresenceConfidence: 0.5,
-        minTrackingConfidence: 0.5,
+        minPoseDetectionConfidence: 0.3,
+        minPosePresenceConfidence: 0.3,
+        minTrackingConfidence: 0.3,
         outputSegmentationMasks: false,
       });
       landmarkerRef.current = landmarker;

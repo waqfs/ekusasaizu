@@ -7,9 +7,10 @@ interface PoseOverlayProps {
   width: number;
   height: number;
   mirrored?: boolean;
+  contain?: boolean;
 }
 
-export function PoseOverlay({ landmarks, width, height, mirrored = true }: PoseOverlayProps) {
+export function PoseOverlay({ landmarks, width, height, mirrored = true, contain = false }: PoseOverlayProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -34,7 +35,7 @@ export function PoseOverlay({ landmarks, width, height, mirrored = true }: PoseO
       const la = landmarks[a];
       const lb = landmarks[b];
       if (!la || !lb) continue;
-      if ((la.visibility ?? 0) < 0.3 || (lb.visibility ?? 0) < 0.3) continue;
+      if ((la.visibility ?? 0) < 0.1 || (lb.visibility ?? 0) < 0.1) continue;
       ctx.beginPath();
       ctx.moveTo(toX(la.x), toY(la.y));
       ctx.lineTo(toX(lb.x), toY(lb.y));
@@ -43,13 +44,15 @@ export function PoseOverlay({ landmarks, width, height, mirrored = true }: PoseO
 
     // Draw joint points
     for (const lm of landmarks) {
-      if (!lm || (lm.visibility ?? 0) < 0.3) continue;
+      if (!lm || (lm.visibility ?? 0) < 0.1) continue;
       ctx.beginPath();
       ctx.arc(toX(lm.x), toY(lm.y), 3, 0, 2 * Math.PI);
       ctx.fillStyle = (lm.visibility ?? 0) > 0.7 ? 'rgba(245, 158, 11, 0.9)' : 'rgba(168, 162, 158, 0.6)';
       ctx.fill();
     }
-  }, [landmarks, width, height, mirrored]);
+  }, [landmarks, width, height, mirrored, contain]);
 
-  return <canvas ref={canvasRef} class="absolute inset-0 pointer-events-none" style={{ width: '100%', height: '100%' }} />;
+  const fitStyle = contain ? 'object-contain' : '';
+
+  return <canvas ref={canvasRef} class={`absolute inset-0 pointer-events-none ${fitStyle}`} style={{ width: '100%', height: '100%' }} />;
 }
