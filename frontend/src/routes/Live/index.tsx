@@ -5,25 +5,13 @@ import { PoseOverlay } from '@component/PoseOverlay.jsx';
 import { useCameraSession } from '../../lib/useCameraSession';
 import { usePoseStream } from '../../lib/usePoseStream';
 import { useWorkoutFormState } from '../../lib/useWorkoutFormState';
-import type { ExerciseType } from '../../lib/types';
+import { fetchExerciseConfig } from '../../lib/api';
+import type { ExerciseConfig } from '../../lib/configAnalyzer';
 
 const mockMessages = [
   { from: 'agent', text: "Welcome! Enable your camera and I'll start tracking your form." },
   { from: 'agent', text: 'MediaPipe Pose Landmarker will detect 33 body keypoints in real time.' },
 ];
-
-function mapExerciseType(name: string): ExerciseType {
-  const map: Record<string, ExerciseType> = {
-    'push-ups': 'pushups',
-    'pushups': 'pushups',
-    'squats': 'squats',
-    'planks': 'plank',
-    'plank': 'plank',
-    'lunges': 'lunges',
-    'burpees': 'burpees',
-  };
-  return map[name.toLowerCase()] ?? 'pushups';
-}
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -33,13 +21,27 @@ function formatTime(seconds: number) {
 
 export function Live() {
   const { query } = useLocation();
-  const exerciseParam = query.exercise ?? 'push-ups';
-  const exerciseName = exerciseParam.charAt(0).toUpperCase() + exerciseParam.slice(1);
-  const exerciseType = mapExerciseType(exerciseParam);
+  const exerciseId = query.exercise ?? 'squat';
+
+  // Exercise config loaded from backend
+  const [config, setConfig] = useState<ExerciseConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConfigLoading(true);
+    setConfigError(null);
+    fetchExerciseConfig(exerciseId)
+      .then(setConfig)
+      .catch(err => setConfigError(err.message))
+      .finally(() => setConfigLoading(false));
+  }, [exerciseId]);
+
+  const exerciseName = config?.name ?? exerciseId.charAt(0).toUpperCase() + exerciseId.slice(1);
 
   const camera = useCameraSession();
   const pose = usePoseStream(camera.videoRef);
-  const workout = useWorkoutFormState(exerciseType);
+  const workout = useWorkoutFormState(config);
 
   const [micOn, setMicOn] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -129,7 +131,7 @@ export function Live() {
     camera.stop();
   };
 
-  const isHoldExercise = exerciseType === 'plank';
+  const isHoldExercise = config?.type === 'hold';
   const feedbackColor = workout.formIssues[0]?.startsWith('Good') ? 'text-emerald-400' : 'text-amber-400';
 
   return (
@@ -223,14 +225,25 @@ export function Live() {
               {!camera.isActive && (
                 <div class="absolute inset-0 flex items-center justify-center">
                   <div class="text-center">
-                    <svg class="w-16 h-16 mx-auto text-stone-700 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                      <path
-                        stroke-linecap="round"
-                        d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9.75a.75.75 0 00.75-.75V6a.75.75 0 00-.75-.75H4.5a.75.75 0 00-.75.75v12c0 .414.336.75.75.75z"
-                      />
-                    </svg>
-                    <p class="text-stone-500">Camera is off</p>
-                    <p class="text-stone-600 text-xs mt-1">Enable your camera to start pose detection</p>
+                    {configLoading && <p class="text-stone-400 text-sm mb-3">Loading exercise configuration…</p>}
+                    {configError && (
+                      <div class="mb-4">
+                        <p class="text-red-400 text-sm">Failed to load config: {configError}</p>
+                        <p class="text-stone-600 text-xs mt-1">Make sure the backend is running at localhost:8000</p>
+                      </div>
+                    )}
+                    {!configLoading && !configError && (
+                      <>
+                        <svg class="w-16 h-16 mx-auto text-stone-700 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                          <path
+                            stroke-linecap="round"
+                            d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9.75a.75.75 0 00.75-.75V6a.75.75 0 00-.75-.75H4.5a.75.75 0 00-.75.75v12c0 .414.336.75.75.75z"
+                          />
+                        </svg>
+                        <p class="text-stone-500">Camera is off</p>
+                        <p class="text-stone-600 text-xs mt-1">Enable your camera to start pose detection</p>
+                      </>
+                    )}
                     {camera.error && <p class="text-red-400 text-xs mt-2">{camera.error}</p>}
                   </div>
                 </div>

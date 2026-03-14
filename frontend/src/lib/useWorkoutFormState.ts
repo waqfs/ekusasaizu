@@ -1,6 +1,7 @@
-import { useState, useCallback, useRef } from 'preact/hooks';
-import type { NormalizedLandmark, FormEvent, ExerciseType, WorkoutState } from './types';
-import { checkVisibility, getAnalyzer } from './analyzers';
+import { useState, useCallback, useRef, useMemo } from 'preact/hooks';
+import type { NormalizedLandmark, FormEvent, WorkoutState } from './types';
+import { ConfigDrivenAnalyzer, type ExerciseConfig } from './configAnalyzer';
+import { isBodyVisible } from './landmarks';
 
 const INITIAL_STATE: WorkoutState = {
   repCount: 0,
@@ -12,26 +13,42 @@ const INITIAL_STATE: WorkoutState = {
   events: [],
 };
 
-export function useWorkoutFormState(exercise: ExerciseType) {
+/**
+ * Hook that drives the workout state machine using a JSON exercise config.
+ * Pass `null` config to get an idle state (before config is loaded).
+ */
+export function useWorkoutFormState(config: ExerciseConfig | null) {
   const [state, setState] = useState<WorkoutState>(INITIAL_STATE);
-  const phaseRef = useRef<'top' | 'bottom'>('top');
   const holdStartRef = useRef<number>(0);
-  const analyzer = getAnalyzer(exercise);
+
+  const analyzer = useMemo(() => {
+    if (!config) return null;
+    return new ConfigDrivenAnalyzer(config);
+  }, [config]);
+
+  // Build a message lookup from form_checks in the config
+  const messageMap = useMemo(() => {
+    if (!config) return new Map<string, string>();
+    const map = new Map<string, string>();
+    for (const check of config.form_checks) {
+      map.set(check.event_type, check.message);
+    }
+    return map;
+  }, [config]);
 
   const processLandmarks = useCallback(
     (landmarks: NormalizedLandmark[] | null) => {
-      if (!landmarks || landmarks.length < 33) {
+      if (!analyzer || !landmarks || landmarks.length < 33) {
         setState(s => ({ ...s, isBodyVisible: false, formIssues: ['Position your full body in the camera frame'] }));
         return;
       }
 
-      const visible = checkVisibility(landmarks, exercise);
-      if (!visible) {
+      if (!isBodyVisible(landmarks)) {
         setState(s => ({ ...s, isBodyVisible: false, formIssues: ['Some body parts are not visible — adjust camera'] }));
         return;
       }
 
-      const events = analyzer(landmarks);
+      const events = analyzer.process(landmarks);
       const issues: string[] = [];
 
       setState(prev => {
@@ -39,46 +56,28 @@ export function useWorkoutFormState(exercise: ExerciseType) {
         let newScore = 0;
 
         for (const event of events) {
-          switch (event.type) {
-            case 'rep_started':
-              if (phaseRef.current === 'top') {
-                phaseRef.current = 'bottom';
-                currentPhase = 'descending';
-              }
-              break;
-            case 'rep_completed':
-              if (phaseRef.current === 'bottom') {
-                phaseRef.current = 'top';
-                repCount++;
-                currentPhase = 'top';
-                newScore = event.score;
-              }
-              break;
-            case 'depth_too_shallow':
-              issues.push('Go deeper — increase your range of motion');
-              break;
-            case 'knees_caving':
-              issues.push('Keep your knees aligned over your toes');
-              break;
-            case 'hips_dropping':
-              issues.push('Raise your hips — keep your body straight');
-              break;
-            case 'hips_sagging':
-              issues.push('Tighten your core — prevent hip sag');
-              break;
-            case 'back_arching':
-              issues.push('Flatten your back — engage your core');
-              break;
-            case 'hold_started':
-              if (currentPhase !== 'holding') {
-                holdStartRef.current = performance.now();
-                currentPhase = 'holding';
-              }
-              holdDuration = Math.floor((performance.now() - holdStartRef.current) / 1000);
-              break;
-            case 'good_form':
-              if (issues.length === 0) issues.push('Good form — keep it up!');
-              break;
+          if (event.type === 'rep_completed') {
+            repCount = analyzer.repCount;
+            newScore = event.score ?? 0;
+            currentPhase = analyzer.phase;
+          } else if (event.type === 'good_form') {
+            if (issues.length === 0) issues.push('Good form — keep it up!');
+          } else {
+            // Look up message for this event type
+            const msg = messageMap.get(event.type);
+            if (msg) issues.push(msg);
+          }
+        }
+
+        currentPhase = analyzer.phase;
+
+        // Handle hold-type exercises
+        if (config?.type === 'hold') {
+          if (currentPhase === 'hold' || currentPhase === 'top') {
+            if (holdStartRef.current === 0) holdStartRef.current = performance.now();
+            holdDuration = Math.floor((performance.now() - holdStartRef.current) / 1000);
+          } else {
+            holdStartRef.current = 0;
           }
         }
 
@@ -93,14 +92,14 @@ export function useWorkoutFormState(exercise: ExerciseType) {
         };
       });
     },
-    [exercise, analyzer],
+    [analyzer, messageMap, config],
   );
 
   const reset = useCallback(() => {
     setState(INITIAL_STATE);
-    phaseRef.current = 'top';
     holdStartRef.current = 0;
-  }, []);
+    analyzer?.reset();
+  }, [analyzer]);
 
   return { ...state, processLandmarks, reset };
 }
