@@ -36,10 +36,12 @@ export function Demo() {
 
   // --- Load exercises from backend ---
   useEffect(() => {
-    fetchExercises().then(data => {
-      setExercises(data);
-      if (data.length > 0) setSelectedExerciseId(data[0].id);
-    }).catch(() => {});
+    fetchExercises()
+      .then(data => {
+        setExercises(data);
+        if (data.length > 0) setSelectedExerciseId(data[0].id);
+      })
+      .catch(() => {});
   }, []);
 
   // --- Load config when exercise changes ---
@@ -56,13 +58,10 @@ export function Demo() {
     setLandmarkerLoading(true);
     setLandmarkerError(null);
     try {
-      const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm',
-      );
+      const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.32/wasm');
       const landmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath:
-            'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
+          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
         },
         runningMode: 'VIDEO',
         numPoses: 1,
@@ -81,10 +80,13 @@ export function Demo() {
   }, []);
 
   // Clean up
-  useEffect(() => () => {
-    if (landmarkerRef.current) landmarkerRef.current.close();
-    if (videoSrc) URL.revokeObjectURL(videoSrc);
-  }, []);
+  useEffect(
+    () => () => {
+      if (landmarkerRef.current) landmarkerRef.current.close();
+      if (videoSrc) URL.revokeObjectURL(videoSrc);
+    },
+    [],
+  );
 
   // --- Handle file selection ---
   const handleFileSelect = (e: Event) => {
@@ -305,7 +307,11 @@ export function Demo() {
                 <div class="absolute inset-0 flex items-center justify-center">
                   <div class="text-center">
                     <svg class="w-16 h-16 mx-auto text-stone-700 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-2.625 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M4.875 8.25C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 5.004 6.504 4.5 7.125 4.5h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0118 7.125v-1.5m1.125 2.625c-.621 0-1.125.504-1.125 1.125v1.5m2.625-2.625c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 016 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25C6 11.496 5.496 12 4.875 12M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m-12 5.25v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125m-12 0v-1.5c0-.621-.504-1.125-1.125-1.125M18 18.375v-5.25m0 5.25v-1.5c0-.621.504-1.125 1.125-1.125M18 13.125v1.5c0 .621.504 1.125 1.125 1.125M18 13.125c0-.621.504-1.125 1.125-1.125M6 13.125v1.5c0 .621-.504 1.125-1.125 1.125M6 13.125C6 12.504 5.496 12 4.875 12m-1.5 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 12 6 12.504 6 13.125" />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h1.5C5.496 19.5 6 18.996 6 18.375m-2.625 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-1.5A1.125 1.125 0 0118 18.375M20.625 4.5H3.375m17.25 0c.621 0 1.125.504 1.125 1.125M20.625 4.5h-1.5C18.504 4.5 18 5.004 18 5.625m3.75 0v1.5c0 .621-.504 1.125-1.125 1.125M3.375 4.5c-.621 0-1.125.504-1.125 1.125M3.375 4.5h1.5C5.496 4.5 6 5.004 6 5.625m-3.75 0v1.5c0 .621.504 1.125 1.125 1.125m0 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 8.25 6 7.746 6 7.125v-1.5M4.875 8.25C5.496 8.25 6 8.754 6 9.375v1.5m0-5.25v5.25m0-5.25C6 5.004 6.504 4.5 7.125 4.5h9.75c.621 0 1.125.504 1.125 1.125m1.125 2.625h1.5m-1.5 0A1.125 1.125 0 0118 7.125v-1.5m1.125 2.625c-.621 0-1.125.504-1.125 1.125v1.5m2.625-2.625c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125M18 5.625v5.25M7.125 12h9.75m-9.75 0A1.125 1.125 0 016 10.875M7.125 12C6.504 12 6 12.504 6 13.125m0-2.25C6 11.496 5.496 12 4.875 12M18 10.875c0 .621-.504 1.125-1.125 1.125M18 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m-12 5.25v-5.25m0 5.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125m-12 0v-1.5c0-.621-.504-1.125-1.125-1.125M18 18.375v-5.25m0 5.25v-1.5c0-.621.504-1.125 1.125-1.125M18 13.125v1.5c0 .621.504 1.125 1.125 1.125M18 13.125c0-.621.504-1.125 1.125-1.125M6 13.125v1.5c0 .621-.504 1.125-1.125 1.125M6 13.125C6 12.504 5.496 12 4.875 12m-1.5 0h1.5m-1.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m1.5-3.75C5.496 12 6 12.504 6 13.125"
+                      />
                     </svg>
                     <p class="text-stone-500">No video loaded</p>
                     <p class="text-stone-600 text-xs mt-1">Choose a video file to begin analysis</p>
@@ -318,14 +324,7 @@ export function Demo() {
             {frames.length > 0 && (
               <div class="flex items-center gap-3">
                 <span class="text-xs text-stone-500 w-16 text-right">Frame {currentIdx + 1}</span>
-                <input
-                  type="range"
-                  min="0"
-                  max={frames.length - 1}
-                  value={currentIdx}
-                  onInput={handleScrub}
-                  class="flex-1 accent-amber-500"
-                />
+                <input type="range" min="0" max={frames.length - 1} value={currentIdx} onInput={handleScrub} class="flex-1 accent-amber-500" />
                 <span class="text-xs text-stone-500 w-16">{frames.length} total</span>
               </div>
             )}
@@ -394,7 +393,9 @@ export function Demo() {
               {analysisResult && analysisResult.events.length > 0 ? (
                 <div class="space-y-1">
                   {analysisResult.events.map(ev => (
-                    <div class={`text-xs px-2 py-1 rounded ${ev.type === 'good_form' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}>
+                    <div
+                      class={`text-xs px-2 py-1 rounded ${ev.type === 'good_form' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-amber-500/10 text-amber-400'}`}
+                    >
                       {ev.type}
                       {ev.score !== undefined && ` (score: ${ev.score})`}
                     </div>
