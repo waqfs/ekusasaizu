@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { DashboardLayout } from '@component/DashboardLayout.jsx';
 import { PoseOverlay } from '@component/PoseOverlay.jsx';
@@ -56,6 +56,35 @@ export function Live() {
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Play PCM audio response from Gemini (24kHz, 16-bit little-endian)
+  const playAudio = useCallback((pcmB64: string) => {
+    try {
+      const binary = atob(pcmB64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+      const sampleRate = 24000;
+      const int16 = new Int16Array(bytes.buffer);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        audioContextRef.current = new AudioContext({ sampleRate });
+      }
+      const ctx = audioContextRef.current;
+      const buffer = ctx.createBuffer(1, float32.length, sampleRate);
+      buffer.getChannelData(0).set(float32);
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start();
+    } catch (err) {
+      console.error('Audio playback error:', err);
+    }
+  }, []);
 
   // Process landmarks through the workout analyzer
   useEffect(() => {
@@ -113,14 +142,11 @@ export function Live() {
       }
       // Connect to coaching session
       coaching.connect({
-        onCoachMessage: (msg) => {
-          setMessages(prev => [...prev, { from: 'agent', text: msg }]);
+        onTranscript: (role, text) => {
+          setMessages(prev => [...prev, { from: role === 'agent' ? 'agent' : 'user', text }]);
         },
-        onCommand: (cmd) => {
-          if (cmd.type === 'start_exercise' && cmd.exercise_id) {
-            // Switch exercise by navigating
-            window.location.href = `/live?exercise=${cmd.exercise_id}`;
-          }
+        onAudioChunk: (pcmB64) => {
+          playAudio(pcmB64);
         },
       });
     }
@@ -133,7 +159,7 @@ export function Live() {
       setMicOn(false);
     } else {
       audio.start((chunk) => {
-        coaching.setAudioChunk(chunk);
+        coaching.sendAudioChunk(chunk);
       });
       setMicOn(true);
     }
@@ -143,33 +169,8 @@ export function Live() {
   useEffect(() => {
     if (camera.isActive && pose.isReady) {
       pose.startDetection();
-      setMessages(prev => [...prev, { from: 'agent', text: `Pose model loaded! Tracking your ${exerciseName} form now.` }]);
     }
   }, [camera.isActive, pose.isReady]);
-
-  // Add form feedback to chat (debounced — max one message every 3s)
-  const lastIssueRef = useRef('');
-  const lastIssueTimeRef = useRef(0);
-  useEffect(() => {
-    if (workout.formIssues.length > 0 && workout.isBodyVisible) {
-      const issue = workout.formIssues[0];
-      const now = Date.now();
-      if (issue !== lastIssueRef.current && now - lastIssueTimeRef.current > 3000) {
-        lastIssueRef.current = issue;
-        lastIssueTimeRef.current = now;
-        setMessages(prev => [...prev, { from: 'agent', text: issue }]);
-      }
-    }
-  }, [workout.formIssues, workout.isBodyVisible]);
-
-  // Announce rep completions
-  const lastRepRef = useRef(0);
-  useEffect(() => {
-    if (workout.repCount > lastRepRef.current) {
-      lastRepRef.current = workout.repCount;
-      setMessages(prev => [...prev, { from: 'agent', text: `Rep ${workout.repCount} complete! Score: ${workout.currentScore}` }]);
-    }
-  }, [workout.repCount]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -194,6 +195,7 @@ export function Live() {
     camera.stop();
     coaching.disconnect();
     audio.stop();
+    audioContextRef.current?.close();
   };
 
   const isHoldExercise = config?.type === 'hold';

@@ -10,9 +10,8 @@ interface ExerciseCommand {
 
 interface SessionState {
   isConnected: boolean;
+  geminiConnected: boolean;
   sessionId: string | null;
-  lastCoachMessage: string | null;
-  batchCount: number;
 }
 
 interface UseCoachingSessionOptions {
@@ -22,22 +21,22 @@ interface UseCoachingSessionOptions {
 }
 
 interface CoachingCallbacks {
-  onCoachMessage: (msg: string) => void;
+  onTranscript: (role: 'user' | 'agent', text: string) => void;
+  onAudioChunk?: (pcmB64: string, sampleRate: number) => void;
   onCommand?: (cmd: ExerciseCommand) => void;
 }
 
 /**
- * Hook for managing a WebSocket coaching session with the backend.
- * Supports real-time coaching during exercise AND conversational chat.
+ * Hook for managing a WebSocket coaching session with Gemini Live.
+ * Supports bidirectional audio streaming and text chat.
  */
 export function useCoachingSession(options: UseCoachingSessionOptions) {
   const { exercise, batchIntervalMs = 3000, geminiApiKey } = options;
 
   const [state, setState] = useState<SessionState>({
     isConnected: false,
+    geminiConnected: false,
     sessionId: null,
-    lastCoachMessage: null,
-    batchCount: 0,
   });
 
   const wsRef = useRef<WebSocket | null>(null);
@@ -45,16 +44,8 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
   const pendingEventsRef = useRef<FormEvent[]>([]);
   const latestWorkoutRef = useRef<WorkoutState | null>(null);
   const latestAngleValuesRef = useRef<Record<string, number>>({});
-  const audioChunkRef = useRef<string | null>(null);
   const callbacksRef = useRef<CoachingCallbacks | null>(null);
   const sessionIdRef = useRef<string | null>(null);
-
-  const handleCommands = useCallback((commands: ExerciseCommand[]) => {
-    if (!commands || commands.length === 0) return;
-    for (const cmd of commands) {
-      callbacksRef.current?.onCommand?.(cmd);
-    }
-  }, []);
 
   const connect = useCallback((callbacks: CoachingCallbacks) => {
     callbacksRef.current = callbacks;
@@ -79,23 +70,29 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
 
       if (data.type === 'session_started') {
         sessionIdRef.current = data.session_id;
-        setState(s => ({ ...s, isConnected: true, sessionId: data.session_id }));
+        setState(s => ({
+          ...s,
+          isConnected: true,
+          sessionId: data.session_id,
+          geminiConnected: !!data.gemini_connected,
+        }));
 
-        // Start periodic batch sending
+        // Start periodic batch sending for workout data
         intervalRef.current = setInterval(() => {
           sendBatch();
         }, batchIntervalMs);
-      } else if (data.type === 'coaching') {
-        setState(s => ({
-          ...s,
-          lastCoachMessage: data.text,
-          batchCount: data.batch_number,
-        }));
-        if (data.text) callbacksRef.current?.onCoachMessage(data.text);
-        handleCommands(data.commands);
-      } else if (data.type === 'chat_response') {
-        if (data.text) callbacksRef.current?.onCoachMessage(data.text);
-        handleCommands(data.commands);
+
+      } else if (data.type === 'transcript') {
+        callbacksRef.current?.onTranscript(data.role, data.text);
+
+      } else if (data.type === 'audio_chunk') {
+        callbacksRef.current?.onAudioChunk?.(
+          data.pcm16_b64,
+          data.sample_rate_hz || 24000,
+        );
+
+      } else if (data.type === 'error') {
+        console.error('Session error:', data.message);
       }
     };
 
@@ -104,7 +101,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
     };
 
     ws.onclose = () => {
-      setState(s => ({ ...s, isConnected: false }));
+      setState(s => ({ ...s, isConnected: false, geminiConnected: false }));
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [exercise, batchIntervalMs, geminiApiKey]);
@@ -117,13 +114,23 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
       ws.close();
     }
     sessionIdRef.current = null;
-    setState({ isConnected: false, sessionId: null, lastCoachMessage: null, batchCount: 0 });
+    setState({ isConnected: false, geminiConnected: false, sessionId: null });
   }, []);
 
   const sendChat = useCallback((text: string) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(JSON.stringify({ type: 'chat', text }));
+  }, []);
+
+  const sendAudioChunk = useCallback((pcmB64: string, sampleRate: number = 16000) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({
+      type: 'audio_chunk',
+      pcm16_b64: pcmB64,
+      sample_rate_hz: sampleRate,
+    }));
   }, []);
 
   const addFormEvent = useCallback((event: FormEvent) => {
@@ -136,10 +143,6 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
 
   const updateAngleValues = useCallback((angles: Record<string, number>) => {
     latestAngleValuesRef.current = angles;
-  }, []);
-
-  const setAudioChunk = useCallback((b64: string) => {
-    audioChunkRef.current = b64;
   }, []);
 
   const sendBatch = useCallback(() => {
@@ -164,13 +167,11 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
         is_body_visible: workout.isBodyVisible,
         form_issues: workout.formIssues,
       },
-      audio_chunk_b64: audioChunkRef.current,
       angle_values: latestAngleValuesRef.current,
     };
 
     ws.send(JSON.stringify({ type: 'batch', payload }));
     pendingEventsRef.current = [];
-    audioChunkRef.current = null;
   }, [exercise]);
 
   useEffect(() => {
@@ -185,9 +186,9 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
     connect,
     disconnect,
     sendChat,
+    sendAudioChunk,
     addFormEvent,
     updateWorkoutState,
     updateAngleValues,
-    setAudioChunk,
   };
 }

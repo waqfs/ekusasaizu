@@ -73,6 +73,45 @@ def _parse_commands(text: str) -> tuple[str, list[dict]]:
     return clean_text, commands
 
 
+async def _text_to_speech(api_key: str, text: str) -> str | None:
+    """Convert text to speech using Gemini TTS. Returns base64 PCM audio or None."""
+    try:
+        from google import genai
+        from google.genai import types
+
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash-preview-tts",
+            contents=text,
+            config=types.GenerateContentConfig(
+                response_modalities=["AUDIO"],
+                speech_config=types.SpeechConfig(
+                    voice_config=types.VoiceConfig(
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
+                    )
+                ),
+            ),
+        )
+
+        # Extract audio data from response
+        if (response.candidates and response.candidates[0].content
+                and response.candidates[0].content.parts):
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    import base64
+                    audio_bytes = part.inline_data.data
+                    if isinstance(audio_bytes, bytes):
+                        return base64.b64encode(audio_bytes).decode('utf-8')
+                    return audio_bytes  # Already base64 string
+
+        logger.warning("TTS response had no audio parts")
+        return None
+
+    except Exception as e:
+        logger.error("Gemini TTS error: %s", e)
+        return None
+
+
 def summarize_pose_frames(payload: BatchPayload) -> dict:
     """Summarize pose frames into a compact representation for Gemini."""
     if not payload.pose_frames:
@@ -101,15 +140,20 @@ def build_gemini_request(payload: BatchPayload) -> GeminiRequest:
         angle_values=payload.angle_values,
     )
 
+    # Only flag as meaningful if there are form events or audio
+    has_meaningful = bool(payload.form_events) or bool(payload.audio_chunk_b64)
+
     return GeminiRequest(
         session_id=payload.session_id,
         exercise=payload.exercise,
         prompt=prompt,
         pose_summary=summarize_pose_frames(payload),
+        audio_chunk_b64=payload.audio_chunk_b64,
         audio_duration_seconds=None,
         rep_count=payload.workout_status.rep_count,
         form_events=payload.form_events,
         angle_values=payload.angle_values,
+        has_meaningful_events=has_meaningful,
     )
 
 
@@ -133,7 +177,7 @@ def _build_contents(session_id: str, user_message: str) -> list[dict]:
     return contents
 
 
-async def send_chat(session_id: str, user_text: str) -> GeminiResponse:
+async def send_chat(session_id: str, user_text: str, want_audio: bool = True) -> GeminiResponse:
     """Handle a user chat message — send to Gemini with conversation history."""
     api_key = _get_api_key(session_id)
 
@@ -174,10 +218,16 @@ async def send_chat(session_id: str, user_text: str) -> GeminiResponse:
 
         logger.info("GEMINI CHAT RESPONSE [%s] → %s (commands=%s)", session_id, clean_text[:80], commands)
 
+        # Generate audio response
+        audio_b64 = None
+        if want_audio and clean_text:
+            audio_b64 = await _text_to_speech(api_key, clean_text)
+
         return GeminiResponse(
             session_id=session_id,
             coaching_text=clean_text,
             commands=commands,
+            audio_b64=audio_b64,
         )
 
     except Exception as e:
@@ -195,15 +245,21 @@ async def send_chat(session_id: str, user_text: str) -> GeminiResponse:
 async def send_to_gemini(request: GeminiRequest) -> GeminiResponse:
     """Send workout data to Gemini for coaching response.
 
-    Uses conversation history + workout data for context-aware coaching.
+    Only responds when there are meaningful events (form events, audio).
+    Includes audio as inline data when available.
     """
+    # Skip batches with no meaningful events
+    if not request.has_meaningful_events:
+        return GeminiResponse(session_id=request.session_id, coaching_text="")
+
     api_key = _get_api_key(request.session_id)
 
     logger.info(
-        "GEMINI BATCH [%s] exercise=%s reps=%d api_key=%s",
+        "GEMINI BATCH [%s] exercise=%s reps=%d audio=%s api_key=%s",
         request.session_id,
         request.exercise,
         request.rep_count,
+        "yes" if request.audio_chunk_b64 else "no",
         "user" if request.session_id in _session_api_keys else ("env" if api_key else "none"),
     )
 
@@ -217,21 +273,23 @@ async def send_to_gemini(request: GeminiRequest) -> GeminiResponse:
 
         client = genai.Client(api_key=api_key)
 
-        # Add workout data as a "user" message in conversation
+        # Build the user message parts — text prompt + optional audio
+        user_parts = [{"text": request.prompt}]
+
+        if request.audio_chunk_b64:
+            user_parts.append({
+                "inline_data": {
+                    "mime_type": "audio/l16;rate=16000",
+                    "data": request.audio_chunk_b64,
+                }
+            })
+
         _add_to_history(request.session_id, "user", request.prompt)
         contents = _build_contents(request.session_id, request.prompt)
 
-        # Remove the duplicate — _build_contents already adds the current message
-        # We added to history above, and _build_contents also appends it.
-        # Fix: don't add to history here, let _build_contents handle the current msg.
-        # Actually, _build_contents iterates history AND adds user_message.
-        # Since we already added to history, the message appears twice.
-        # Remove from history since _build_contents adds it separately.
-        history = _session_history.get(request.session_id, [])
-        if history and history[-1]["text"] == request.prompt:
-            history.pop()
-
-        contents = _build_contents(request.session_id, request.prompt)
+        # Replace the last user message with the one that includes audio parts
+        if request.audio_chunk_b64:
+            contents[-1] = {"role": "user", "parts": user_parts}
 
         response = client.models.generate_content(
             model="gemini-2.5-flash",
@@ -239,16 +297,21 @@ async def send_to_gemini(request: GeminiRequest) -> GeminiResponse:
         )
 
         raw_text = response.text or "Keep going!"
-        _add_to_history(request.session_id, "user", request.prompt)
         _add_to_history(request.session_id, "model", raw_text)
         clean_text, commands = _parse_commands(raw_text)
 
         logger.info("GEMINI RESPONSE [%s] → %s", request.session_id, clean_text[:80])
 
+        # Generate audio response when audio was sent from client
+        audio_b64 = None
+        if request.audio_chunk_b64 and clean_text:
+            audio_b64 = await _text_to_speech(api_key, clean_text)
+
         return GeminiResponse(
             session_id=request.session_id,
             coaching_text=clean_text,
             commands=commands,
+            audio_b64=audio_b64,
         )
 
     except Exception as e:

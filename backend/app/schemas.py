@@ -66,17 +66,19 @@ class SessionStartResponse(BaseModel):
 
 
 class GeminiRequest(BaseModel):
-    """Structured request to be sent to Gemini (logged only for now)."""
+    """Structured request to be sent to Gemini."""
 
     session_id: str
     exercise: str
     prompt: str
     pose_summary: dict
+    audio_chunk_b64: str | None = None  # Raw audio to send to Gemini
     audio_duration_seconds: float | None = None
     audio_transcript: str | None = None
     rep_count: int = 0
     form_events: list[FormEvent] = []
     angle_values: dict[str, float] = {}
+    has_meaningful_events: bool = False  # Whether this batch has events worth responding to
 
 
 class GeminiResponse(BaseModel):
@@ -86,4 +88,5 @@ class GeminiResponse(BaseModel):
     coaching_text: str
     suggestions: list[str] = []
     commands: list[dict] = []  # e.g. [{"type": "start_exercise", "exercise_id": "squat"}]
+    audio_b64: str | None = None  # Base64 PCM audio response from Gemini
     score_adjustment: float | None = None
