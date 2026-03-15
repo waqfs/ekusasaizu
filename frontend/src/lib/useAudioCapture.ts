@@ -66,10 +66,8 @@ export function useAudioCapture(options: AudioCaptureOptions = {}) {
           const rms = Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
           isSpeaking = rms > noiseGateThreshold;
 
-          // Only capture audio when speaking (voice activity detection)
-          if (isSpeaking) {
-            chunksRef.current.push(new Float32Array(data));
-          }
+          // Always send audio — Gemini Live needs continuous stream for turn detection
+          chunksRef.current.push(new Float32Array(data));
         };
 
         source.connect(processor);

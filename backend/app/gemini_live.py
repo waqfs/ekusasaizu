@@ -62,6 +62,7 @@ class GeminiLiveSession:
 
         config = {
             "response_modalities": ["AUDIO"],
+            "system_instruction": self.system_instruction,
         }
 
         self._running = True
@@ -89,10 +90,6 @@ class GeminiLiveSession:
 
         logger.info("Gemini Live session connected")
 
-        # Send system instruction as initial text (not in config for native audio model)
-        if self.system_instruction:
-            await self.send_text(self.system_instruction)
-
     async def close(self):
         """Close the Gemini Live session."""
         self._running = False
@@ -115,6 +112,17 @@ class GeminiLiveSession:
 
         self.session = None
         logger.info("Gemini Live session closed")
+
+    async def interrupt(self):
+        """Interrupt any ongoing Gemini generation."""
+        if not self.session:
+            return
+        try:
+            if hasattr(self.session, "interrupt"):
+                await self.session.interrupt()
+                logger.debug("Gemini session interrupted")
+        except Exception as exc:
+            logger.debug("Interrupt failed (non-critical): %s", exc)
 
     async def send_text(self, text: str):
         """Send a text message to Gemini."""
@@ -139,8 +147,11 @@ class GeminiLiveSession:
 
         try:
             types = self._genai_types
-            logger.debug(
-                "Sending audio chunk: %d bytes, mime=%s", len(pcm16_bytes), mime_type
+            logger.info(
+                "Sending audio chunk to Gemini: %d bytes, mime=%s, session_active=%s",
+                len(pcm16_bytes),
+                mime_type,
+                self.session is not None,
             )
             if hasattr(self.session, "send_realtime_input"):
                 if types and hasattr(types, "Blob"):
@@ -200,27 +211,33 @@ class GeminiLiveSession:
             self.session = None
 
     async def _receive_loop(self):
-        """Receive and dispatch responses from Gemini."""
+        """Receive and dispatch responses from Gemini.
+
+        The session.receive() iterator may end after each model turn.
+        We restart it in a loop to keep receiving for the session lifetime.
+        """
         try:
             logger.info("Gemini receive loop started")
-            async for response in self.session.receive():
-                texts, audios = self._extract_response_parts(response)
+            while self._running and self.session:
+                async for response in self.session.receive():
+                    texts, audios = self._extract_response_parts(response)
 
-                if texts:
-                    logger.debug("Gemini text response: %d parts", len(texts))
-                if audios:
-                    logger.debug(
-                        "Gemini audio response: %d parts, total bytes=%d",
-                        len(audios),
-                        sum(len(a) for a in audios),
-                    )
+                    if texts:
+                        logger.info("Gemini text response: %d parts", len(texts))
+                    if audios:
+                        logger.info(
+                            "Gemini audio response: %d parts, total bytes=%d",
+                            len(audios),
+                            sum(len(a) for a in audios),
+                        )
 
-                for text in texts:
-                    await self.on_text(text)
+                    for text in texts:
+                        await self.on_text(text)
 
-                for audio in audios:
-                    await self.on_audio(audio)
-
+                    for audio in audios:
+                        await self.on_audio(audio)
+                logger.debug("receive() iterator ended, restarting...")
+            logger.info("Gemini receive loop exiting (session closed or stopped)")
         except asyncio.CancelledError:
             logger.info("Gemini receive loop cancelled")
             return

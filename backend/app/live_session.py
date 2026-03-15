@@ -53,6 +53,7 @@ async def websocket_session_handler(websocket: WebSocket):
     total_reps: int = 0
     exercise: str = ""
     send_lock = asyncio.Lock()
+    agent_speaking: bool = False
 
     async def ws_send(data: dict):
         async with send_lock:
@@ -64,6 +65,8 @@ async def websocket_session_handler(websocket: WebSocket):
 
     async def on_gemini_audio(audio_bytes: bytes):
         """Gemini produced audio — forward to client as base64 PCM."""
+        nonlocal agent_speaking
+        agent_speaking = True
         b64 = base64.b64encode(audio_bytes).decode("ascii")
         await ws_send(
             {
@@ -172,6 +175,7 @@ async def websocket_session_handler(websocket: WebSocket):
                 if pcm16_b64:
                     pcm_bytes = base64.b64decode(pcm16_b64)
                     sample_rate = data.get("sample_rate_hz", 16000)
+
                     logger.debug(
                         "Forwarding audio chunk to Gemini: %d bytes, rate=%d",
                         len(pcm_bytes),

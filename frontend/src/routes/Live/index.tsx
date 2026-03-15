@@ -156,6 +156,10 @@ export function Live() {
         onAudioChunk: pcmB64 => {
           playAudio(pcmB64);
         },
+        onAudioEnd: () => {
+          // Clear queued audio when interrupted by user speech
+          nextPlayTimeRef.current = 0;
+        },
       }); // Auto-start microphone for Gemini Live audio
       audio.start(chunk => {
         coaching.sendAudioChunk(chunk);
