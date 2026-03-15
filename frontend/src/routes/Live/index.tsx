@@ -236,9 +236,7 @@ export function Live() {
                           <div key={phase} class="flex items-center gap-1.5">
                             <span
                               class={`px-2 py-0.5 rounded text-xs ${
-                                workout.currentPhase === phase
-                                  ? 'bg-amber-500/30 text-amber-300 font-medium'
-                                  : 'text-stone-500'
+                                workout.currentPhase === phase ? 'bg-amber-500/30 text-amber-300 font-medium' : 'text-stone-500'
                               }`}
                             >
                               {phase}

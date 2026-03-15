@@ -97,16 +97,13 @@ export interface ExerciseConfig {
 
 // --- Angle computation ---
 
-function angleBetween(
-  a: NormalizedLandmark,
-  b: NormalizedLandmark,
-  c: NormalizedLandmark,
-): number {
-  const ba = { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
-  const bc = { x: c.x - b.x, y: c.y - b.y, z: c.z - b.z };
-  const dot = ba.x * bc.x + ba.y * bc.y + ba.z * bc.z;
-  const magBA = Math.sqrt(ba.x ** 2 + ba.y ** 2 + ba.z ** 2);
-  const magBC = Math.sqrt(bc.x ** 2 + bc.y ** 2 + bc.z ** 2);
+function angleBetween(a: NormalizedLandmark, b: NormalizedLandmark, c: NormalizedLandmark): number {
+  // Use 2D (x, y) only — MediaPipe z-depth from a single camera is unreliable
+  const ba = { x: a.x - b.x, y: a.y - b.y };
+  const bc = { x: c.x - b.x, y: c.y - b.y };
+  const dot = ba.x * bc.x + ba.y * bc.y;
+  const magBA = Math.sqrt(ba.x ** 2 + ba.y ** 2);
+  const magBC = Math.sqrt(bc.x ** 2 + bc.y ** 2);
   if (magBA === 0 || magBC === 0) return 0;
   const cosAngle = Math.max(-1, Math.min(1, dot / (magBA * magBC)));
   return (Math.acos(cosAngle) * 180) / Math.PI;
@@ -134,11 +131,21 @@ class AngleBuffer {
     this._velocity = (this._smoothed - prev) * 30; // degrees/sec at 30fps
   }
 
-  get value(): number { return this._smoothed; }
-  get velocity(): number { return this._velocity; }
-  get isIncreasing(): boolean { return this._velocity > 5; }
-  get isDecreasing(): boolean { return this._velocity < -5; }
-  get raw(): number { return this.buffer[this.buffer.length - 1] ?? 0; }
+  get value(): number {
+    return this._smoothed;
+  }
+  get velocity(): number {
+    return this._velocity;
+  }
+  get isIncreasing(): boolean {
+    return this._velocity > 5;
+  }
+  get isDecreasing(): boolean {
+    return this._velocity < -5;
+  }
+  get raw(): number {
+    return this.buffer[this.buffer.length - 1] ?? 0;
+  }
 
   /** Get left/right raw values for symmetry checks */
   leftRight: [number, number] = [0, 0];
@@ -162,18 +169,23 @@ export class ConfigDrivenAnalyzer {
 
     // Initialize angle buffers
     for (const [name, angleCfg] of Object.entries(config.angles)) {
-      const buf = new AngleBuffer(
-        config.smoothing.ema_alpha,
-        config.smoothing.buffer_size,
-      );
+      const buf = new AngleBuffer(config.smoothing.ema_alpha, config.smoothing.buffer_size);
       this.angleBuffers.set(name, buf);
     }
   }
 
-  get repCount(): number { return this._repCount; }
-  get lastRepScore(): number { return this._lastRepScore; }
-  get phase(): string { return this.currentPhase; }
-  get phaseIndex(): number { return this.repPhaseIndex; }
+  get repCount(): number {
+    return this._repCount;
+  }
+  get lastRepScore(): number {
+    return this._lastRepScore;
+  }
+  get phase(): string {
+    return this.currentPhase;
+  }
+  get phaseIndex(): number {
+    return this.repPhaseIndex;
+  }
 
   /** Get current smoothed angle values for debug display */
   getAngleValues(): Record<string, number> {
@@ -215,16 +227,8 @@ export class ConfigDrivenAnalyzer {
   private computeAngles(landmarks: NormalizedLandmark[]): void {
     for (const [name, angleCfg] of Object.entries(this.config.angles)) {
       const buffer = this.angleBuffers.get(name)!;
-      const leftAngle = angleBetween(
-        landmarks[angleCfg.left[0]],
-        landmarks[angleCfg.left[1]],
-        landmarks[angleCfg.left[2]],
-      );
-      const rightAngle = angleBetween(
-        landmarks[angleCfg.right[0]],
-        landmarks[angleCfg.right[1]],
-        landmarks[angleCfg.right[2]],
-      );
+      const leftAngle = angleBetween(landmarks[angleCfg.left[0]], landmarks[angleCfg.left[1]], landmarks[angleCfg.left[2]]);
+      const rightAngle = angleBetween(landmarks[angleCfg.right[0]], landmarks[angleCfg.right[1]], landmarks[angleCfg.right[2]]);
       const avg = angleCfg.average ? (leftAngle + rightAngle) / 2 : leftAngle;
       buffer.update(avg);
       buffer.leftRight = [leftAngle, rightAngle];
@@ -239,7 +243,7 @@ export class ConfigDrivenAnalyzer {
     if (!currentPhaseCfg) return null;
 
     const exitCondition = currentPhaseCfg.exit;
-    if (this.checkCondition(exitCondition) && (now - this.phaseEnteredAt >= minDwell)) {
+    if (this.checkCondition(exitCondition) && now - this.phaseEnteredAt >= minDwell) {
       // Find the next phase in the cycle
       const nextPhaseIndex = (this.config.phase_order.indexOf(this.currentPhase) + 1) % this.config.phase_order.length;
       const nextPhase = this.config.phase_order[nextPhaseIndex];
