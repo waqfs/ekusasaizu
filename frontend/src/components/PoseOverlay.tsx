@@ -52,7 +52,7 @@ export function PoseOverlay({ landmarks, width, height, mirrored = true, contain
     }
   }, [landmarks, width, height, mirrored, contain]);
 
-  const fitStyle = contain ? 'object-contain' : '';
+  const fitStyle = contain ? 'object-contain' : 'object-cover';
 
   return <canvas ref={canvasRef} class={`absolute inset-0 pointer-events-none ${fitStyle}`} style={{ width: '100%', height: '100%' }} />;
 }

@@ -50,6 +50,7 @@ export function Live() {
   const [videoSize, setVideoSize] = useState({ w: 1280, h: 720 });
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Process landmarks through the workout analyzer
   useEffect(() => {
@@ -119,6 +120,11 @@ export function Live() {
     }
   }, [workout.repCount]);
 
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const handleSendMessage = (e: Event) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -159,9 +165,9 @@ export function Live() {
         </div>
 
         {/* Main Content */}
-        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-1 gap-4 min-h-0">
           {/* Camera Feed */}
-          <div class="lg:col-span-2 flex flex-col gap-4">
+          <div class="lg:col-span-2 flex flex-col gap-4 min-h-0">
             <div ref={containerRef} class="flex-1 bg-stone-900 border border-stone-800 rounded-lg overflow-hidden relative min-h-100">
               {/* Hidden video element for camera feed */}
               <video
@@ -316,13 +322,13 @@ export function Live() {
           </div>
 
           {/* Agent Chat Panel */}
-          <div class="flex flex-col bg-stone-900/30 border border-stone-800/30 rounded-lg overflow-hidden">
+          <div class="flex flex-col min-h-0 bg-stone-900/30 border border-stone-800/30 rounded-lg overflow-hidden">
             <div class="px-4 py-3 border-b border-stone-800">
               <h3 class="text-xs font-medium tracking-wide text-stone-300">AI Coach</h3>
               <p class="text-xs text-stone-500">Real-time feedback and communication</p>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div class="flex-1 overflow-y-auto p-4 space-y-3 max-h-[60vh]">
               {messages.map(msg => (
                 <div class={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
@@ -334,6 +340,7 @@ export function Live() {
                   </div>
                 </div>
               ))}
+              <div ref={chatEndRef} />
             </div>
 
             <form onSubmit={handleSendMessage} class="p-3 border-t border-stone-800">
