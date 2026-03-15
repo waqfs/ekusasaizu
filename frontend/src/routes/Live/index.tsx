@@ -55,8 +55,10 @@ export function Live() {
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const nextPlayTimeRef = useRef<number>(0);
 
   // Play PCM audio response from Gemini (24kHz, 16-bit little-endian)
+  // Uses a scheduling queue to play chunks sequentially without overlap
   const playAudio = useCallback((pcmB64: string) => {
     try {
       const binary = atob(pcmB64);
@@ -70,15 +72,23 @@ export function Live() {
 
       if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
         audioContextRef.current = new AudioContext({ sampleRate });
+        nextPlayTimeRef.current = 0;
       }
       const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+
       const buffer = ctx.createBuffer(1, float32.length, sampleRate);
       buffer.getChannelData(0).set(float32);
 
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       source.connect(ctx.destination);
-      source.start();
+
+      // Schedule chunk to play after any previously queued chunks
+      const now = ctx.currentTime;
+      const startTime = Math.max(now, nextPlayTimeRef.current);
+      source.start(startTime);
+      nextPlayTimeRef.current = startTime + buffer.duration;
     } catch (err) {
       console.error('Audio playback error:', err);
     }
