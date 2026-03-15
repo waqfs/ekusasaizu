@@ -1,17 +1,36 @@
 """Gemini communication layer.
 
-Currently logging only — not hitting the Gemini API yet.
-When ready, this will use google-genai to communicate with Gemini 2.5 Flash Live.
+Uses google-genai to communicate with Gemini 2.5 Flash.
+Falls back to mock responses if no API key is configured.
 """
 
 import logging
 import json
+import os
 from datetime import datetime, timezone
 
 from .schemas import BatchPayload, GeminiRequest, GeminiResponse
 from .coach_prompt import SYSTEM_PROMPT, build_coaching_prompt
 
 logger = logging.getLogger("ekusasaizu.gemini")
+
+# Per-session API key overrides (session_id → api_key)
+_session_api_keys: dict[str, str] = {}
+
+
+def set_session_api_key(session_id: str, api_key: str) -> None:
+    """Store a per-session Gemini API key."""
+    _session_api_keys[session_id] = api_key
+
+
+def clear_session_api_key(session_id: str) -> None:
+    """Remove a per-session Gemini API key."""
+    _session_api_keys.pop(session_id, None)
+
+
+def _get_api_key(session_id: str) -> str | None:
+    """Get the API key for a session — user override first, then env."""
+    return _session_api_keys.get(session_id) or os.environ.get("GEMINI_API_KEY")
 
 
 def summarize_pose_frames(payload: BatchPayload) -> dict:
@@ -39,6 +58,7 @@ def build_gemini_request(payload: BatchPayload) -> GeminiRequest:
         form_issues=payload.workout_status.form_issues,
         current_score=payload.workout_status.current_score,
         hold_duration=payload.workout_status.hold_duration,
+        angle_values=payload.angle_values,
     )
 
     return GeminiRequest(
@@ -46,58 +66,68 @@ def build_gemini_request(payload: BatchPayload) -> GeminiRequest:
         exercise=payload.exercise,
         prompt=prompt,
         pose_summary=summarize_pose_frames(payload),
-        audio_duration_seconds=None,  # TODO: calculate from audio chunk
+        audio_duration_seconds=None,
         rep_count=payload.workout_status.rep_count,
         form_events=payload.form_events,
+        angle_values=payload.angle_values,
     )
 
 
 async def send_to_gemini(request: GeminiRequest) -> GeminiResponse:
     """Send data to Gemini for coaching response.
 
-    Currently LOGGING ONLY — does not hit the Gemini API.
-    When ready, this will use the google-genai SDK with Gemini 2.5 Flash Live.
-
-    Example future implementation:
-        from google import genai
-        client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-        response = await client.aio.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[SYSTEM_PROMPT, request.prompt],
-        )
-        return GeminiResponse(
-            session_id=request.session_id,
-            coaching_text=response.text,
-        )
+    Uses the google-genai SDK with Gemini 2.5 Flash.
+    Falls back to mock responses if no API key is available.
     """
+    api_key = _get_api_key(request.session_id)
+
     logger.info(
-        "GEMINI REQUEST [%s] exercise=%s reps=%d\n"
-        "  prompt: %s\n"
-        "  pose_summary: %s\n"
-        "  form_events: %s",
+        "GEMINI REQUEST [%s] exercise=%s reps=%d api_key=%s",
         request.session_id,
         request.exercise,
         request.rep_count,
-        request.prompt,
-        json.dumps(request.pose_summary),
-        json.dumps([e.model_dump() for e in request.form_events]),
+        "user" if request.session_id in _session_api_keys else ("env" if api_key else "none"),
     )
 
-    # Mock response for now
-    mock_text = _generate_mock_coaching(request)
+    if not api_key:
+        logger.info("No API key — using mock response")
+        mock_text = _generate_mock_coaching(request)
+        return GeminiResponse(session_id=request.session_id, coaching_text=mock_text)
 
-    response = GeminiResponse(
-        session_id=request.session_id,
-        coaching_text=mock_text,
-    )
+    try:
+        from google import genai
 
-    logger.info(
-        "GEMINI RESPONSE [%s] → %s",
-        request.session_id,
-        response.coaching_text,
-    )
+        client = genai.Client(api_key=api_key)
 
-    return response
+        contents = [
+            {"role": "user", "parts": [{"text": SYSTEM_PROMPT}]},
+            {"role": "model", "parts": [{"text": "Understood. I'm Kora, your exercise coach. Ready to guide your workout."}]},
+            {"role": "user", "parts": [{"text": request.prompt}]},
+        ]
+
+        # Add audio context if available
+        if request.audio_transcript:
+            contents.append(
+                {"role": "user", "parts": [{"text": f"User said: {request.audio_transcript}"}]}
+            )
+
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=contents,
+        )
+
+        coaching_text = response.text or "Keep going!"
+        logger.info("GEMINI RESPONSE [%s] → %s", request.session_id, coaching_text)
+
+        return GeminiResponse(
+            session_id=request.session_id,
+            coaching_text=coaching_text,
+        )
+
+    except Exception as e:
+        logger.error("Gemini API error: %s — falling back to mock", e)
+        mock_text = _generate_mock_coaching(request)
+        return GeminiResponse(session_id=request.session_id, coaching_text=mock_text)
 
 
 def _generate_mock_coaching(request: GeminiRequest) -> str:

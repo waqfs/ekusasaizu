@@ -26,6 +26,7 @@ def build_coaching_prompt(
     form_issues: list[str],
     current_score: float,
     hold_duration: float | None = None,
+    angle_values: dict[str, float] | None = None,
 ) -> str:
     """Build a contextual prompt for Gemini based on current workout state."""
     lines = [
@@ -36,6 +37,10 @@ def build_coaching_prompt(
 
     if hold_duration is not None and hold_duration > 0:
         lines.append(f"Hold duration: {hold_duration}s")
+
+    if angle_values:
+        angle_strs = [f"  {name}: {val:.0f}°" for name, val in angle_values.items()]
+        lines.append("Current joint angles:\n" + "\n".join(angle_strs))
 
     if form_events:
         event_strs = [

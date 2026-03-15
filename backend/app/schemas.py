@@ -46,6 +46,7 @@ class BatchPayload(BaseModel):
     form_events: list[FormEvent] = []
     workout_status: WorkoutStatus
     audio_chunk_b64: str | None = None  # base64-encoded audio chunk
+    angle_values: dict[str, float] = {}  # Current angle debug values from analyzer
 
 
 class SessionConfig(BaseModel):
@@ -56,6 +57,7 @@ class SessionConfig(BaseModel):
     audio_enabled: bool = False
     target_reps: int | None = None
     target_hold_seconds: int | None = None
+    gemini_api_key: str | None = None  # User-provided API key (optional)
 
 
 class SessionStartResponse(BaseModel):
@@ -71,8 +73,10 @@ class GeminiRequest(BaseModel):
     prompt: str
     pose_summary: dict
     audio_duration_seconds: float | None = None
+    audio_transcript: str | None = None
     rep_count: int = 0
     form_events: list[FormEvent] = []
+    angle_values: dict[str, float] = {}
 
 
 class GeminiResponse(BaseModel):

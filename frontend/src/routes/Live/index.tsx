@@ -5,6 +5,8 @@ import { PoseOverlay } from '@component/PoseOverlay.jsx';
 import { useCameraSession } from '../../lib/useCameraSession';
 import { usePoseStream } from '../../lib/usePoseStream';
 import { useWorkoutFormState } from '../../lib/useWorkoutFormState';
+import { useCoachingSession } from '../../lib/useCoachingSession';
+import { useAudioCapture } from '../../lib/useAudioCapture';
 import { fetchExerciseConfig } from '../../lib/api';
 import type { ExerciseConfig } from '../../lib/configAnalyzer';
 
@@ -43,6 +45,10 @@ export function Live() {
   const pose = usePoseStream(camera.videoRef);
   const workout = useWorkoutFormState(config);
 
+  const geminiApiKey = typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') || '' : '';
+  const coaching = useCoachingSession({ exercise: exerciseId, geminiApiKey });
+  const audio = useAudioCapture();
+
   const [micOn, setMicOn] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState(mockMessages);
@@ -56,6 +62,19 @@ export function Live() {
   useEffect(() => {
     workout.processLandmarks(pose.landmarks);
   }, [pose.landmarks]);
+
+  // Keep coaching session updated with latest workout state and angles
+  useEffect(() => {
+    coaching.updateWorkoutState(workout);
+    coaching.updateAngleValues(workout.angleValues);
+  }, [workout.repCount, workout.currentPhase, workout.formIssues, workout.isBodyVisible]);
+
+  // Forward form events to coaching session
+  useEffect(() => {
+    for (const event of workout.events) {
+      coaching.addFormEvent(event);
+    }
+  }, [workout.events]);
 
   // Update video dimensions when available
   useEffect(() => {
@@ -83,11 +102,33 @@ export function Live() {
     if (camera.isActive) {
       pose.stopDetection();
       camera.stop();
+      coaching.disconnect();
+      if (micOn) {
+        audio.stop();
+        setMicOn(false);
+      }
     } else {
       await camera.start();
       if (!pose.isReady && !pose.isLoading) {
         pose.initWorker();
       }
+      // Connect to coaching session
+      coaching.connect((msg) => {
+        setMessages(prev => [...prev, { from: 'agent', text: msg }]);
+      });
+    }
+  };
+
+  // Mic toggle
+  const handleMicToggle = () => {
+    if (micOn) {
+      audio.stop();
+      setMicOn(false);
+    } else {
+      audio.start((chunk) => {
+        coaching.setAudioChunk(chunk);
+      });
+      setMicOn(true);
     }
   };
 
@@ -138,6 +179,8 @@ export function Live() {
   const handleEndSession = () => {
     pose.destroy();
     camera.stop();
+    coaching.disconnect();
+    audio.stop();
   };
 
   const isHoldExercise = config?.type === 'hold';
@@ -304,7 +347,7 @@ export function Live() {
                   Camera {camera.isActive ? 'On' : 'Off'}
                 </button>
                 <button
-                  onClick={() => setMicOn(!micOn)}
+                  onClick={handleMicToggle}
                   class={`flex items-center gap-2 px-4 py-2.5 text-sm font-light tracking-wide transition-all ${
                     micOn ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-stone-800 text-stone-400 border border-stone-700'
                   }`}
@@ -346,6 +389,16 @@ export function Live() {
                 {workout.isBodyVisible && <div class="px-3 py-1.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400">● Body Tracked</div>}
                 {workout.currentPhase !== 'idle' && (
                   <div class="px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">Phase: {workout.currentPhase}</div>
+                )}
+                <div
+                  class={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                    coaching.isConnected ? 'bg-emerald-500/10 text-emerald-400' : 'bg-stone-800 text-stone-500'
+                  }`}
+                >
+                  {coaching.isConnected ? '● AI Connected' : '○ AI Offline'}
+                </div>
+                {micOn && audio.isSpeaking && (
+                  <div class="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">🎤 Speaking</div>
                 )}
               </div>
             </div>

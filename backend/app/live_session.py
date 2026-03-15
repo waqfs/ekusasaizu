@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import WebSocket, WebSocketDisconnect
 
 from .schemas import BatchPayload, SessionConfig, SessionStartResponse
-from .gemini import build_gemini_request, send_to_gemini
+from .gemini import build_gemini_request, send_to_gemini, set_session_api_key, clear_session_api_key
 
 logger = logging.getLogger("ekusasaizu.session")
 
@@ -63,11 +63,16 @@ def create_session(config: SessionConfig) -> SessionStartResponse:
     session = LiveSession(session_id=session_id, config=config)
     _sessions[session_id] = session
 
+    # Store user-provided API key if given
+    if config.gemini_api_key:
+        set_session_api_key(session_id, config.gemini_api_key)
+
     logger.info(
-        "SESSION CREATED [%s] exercise=%s interval=%dms",
+        "SESSION CREATED [%s] exercise=%s interval=%dms api_key=%s",
         session_id,
         config.exercise,
         config.batch_interval_ms,
+        "user" if config.gemini_api_key else "env/none",
     )
 
     return SessionStartResponse(session_id=session_id, config=config)
@@ -82,6 +87,9 @@ def end_session(session_id: str) -> dict | None:
     session = _sessions.pop(session_id, None)
     if not session:
         return None
+
+    # Clean up session API key
+    clear_session_api_key(session_id)
 
     duration = time.time() - session.started_at
     summary = {
