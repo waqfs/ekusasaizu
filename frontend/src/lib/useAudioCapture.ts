@@ -1,9 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 
 interface AudioCaptureOptions {
-  noiseGateThreshold?: number; // RMS threshold (0-1) to consider audio as speech
+  noiseGateThreshold?: number; // RMS threshold (0-1) for the speaking UI indicator
   sampleRate?: number;
-  chunkIntervalMs?: number; // How often to check and send audio
+  chunkIntervalMs?: number; // How often to flush and send audio (ms)
 }
 
 interface AudioCaptureState {
@@ -13,11 +13,12 @@ interface AudioCaptureState {
 }
 
 /**
- * Hook for capturing microphone audio with a noise gate.
- * Only produces audio chunks when volume exceeds the threshold.
+ * Hook for capturing microphone audio and streaming PCM16 chunks.
+ * Sends ALL captured audio for Gemini Live API compatibility.
+ * The noise gate is only used for the UI speaking indicator.
  */
 export function useAudioCapture(options: AudioCaptureOptions = {}) {
-  const { noiseGateThreshold = 0.02, chunkIntervalMs = 2000 } = options;
+  const { noiseGateThreshold = 0.02, chunkIntervalMs = 500 } = options;
 
   const [state, setState] = useState<AudioCaptureState>({
     isCapturing: false,
@@ -34,66 +35,74 @@ export function useAudioCapture(options: AudioCaptureOptions = {}) {
   const onChunkRef = useRef<((b64: string) => void) | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const start = useCallback(async (onChunk: (b64Audio: string) => void) => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true },
-      });
-      streamRef.current = stream;
-      onChunkRef.current = onChunk;
+  const start = useCallback(
+    async (onChunk: (b64Audio: string) => void) => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true },
+        });
+        streamRef.current = stream;
+        onChunkRef.current = onChunk;
 
-      const ctx = new AudioContext({ sampleRate: 16000 });
-      contextRef.current = ctx;
+        const ctx = new AudioContext();
+        contextRef.current = ctx;
+        // Ensure AudioContext is running (may be suspended after async getUserMedia)
+        if (ctx.state === 'suspended') await ctx.resume();
+        const nativeSampleRate = ctx.sampleRate;
 
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      analyserRef.current = analyser;
-      source.connect(analyser);
+        const source = ctx.createMediaStreamSource(stream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        analyserRef.current = analyser;
+        source.connect(analyser);
 
-      // Use ScriptProcessor to capture PCM data
-      const processor = ctx.createScriptProcessor(4096, 1, 1);
-      processorRef.current = processor;
-      let isSpeaking = false;
+        // Use ScriptProcessor to capture PCM data
+        const processor = ctx.createScriptProcessor(4096, 1, 1);
+        processorRef.current = processor;
+        let isSpeaking = false;
 
-      processor.onaudioprocess = (e) => {
-        const data = e.inputBuffer.getChannelData(0);
-        const rms = Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
+        processor.onaudioprocess = e => {
+          const data = e.inputBuffer.getChannelData(0);
+          const rms = Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
+          isSpeaking = rms > noiseGateThreshold;
 
-        isSpeaking = rms > noiseGateThreshold;
-        if (isSpeaking) {
+          // Always capture audio — Gemini Live needs continuous stream
           chunksRef.current.push(new Float32Array(data));
-        }
-      };
+        };
 
-      source.connect(processor);
-      processor.connect(ctx.destination);
+        source.connect(processor);
+        processor.connect(ctx.destination);
 
-      // Periodically flush audio chunks
-      intervalRef.current = setInterval(() => {
-        if (chunksRef.current.length > 0) {
-          const allSamples = mergeChunks(chunksRef.current);
-          chunksRef.current = [];
-          const b64 = float32ToBase64PCM(allSamples);
-          onChunkRef.current?.(b64);
-        }
-      }, chunkIntervalMs);
+        // Periodically flush audio chunks
+        intervalRef.current = setInterval(() => {
+          if (chunksRef.current.length > 0) {
+            const allSamples = mergeChunks(chunksRef.current);
+            chunksRef.current = [];
+            // Downsample from native rate to 16kHz for Gemini
+            const downsampled = downsample(allSamples, nativeSampleRate, 16000);
+            const b64 = float32ToBase64PCM(downsampled);
+            console.debug(`[audio] sending chunk: ${b64.length} chars, ${downsampled.length} samples`);
+            onChunkRef.current?.(b64);
+          }
+        }, chunkIntervalMs);
 
-      // Volume meter via analyser
-      const dataArray = new Uint8Array(analyser.frequencyBinCount);
-      const updateVolume = () => {
-        analyser.getByteFrequencyData(dataArray);
-        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255;
-        setState({ isCapturing: true, isSpeaking, volume: avg });
-        rafRef.current = requestAnimationFrame(updateVolume);
-      };
-      updateVolume();
+        // Volume meter via analyser
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const updateVolume = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255;
+          setState({ isCapturing: true, isSpeaking, volume: avg });
+          rafRef.current = requestAnimationFrame(updateVolume);
+        };
+        updateVolume();
 
-      setState({ isCapturing: true, isSpeaking: false, volume: 0 });
-    } catch (err) {
-      console.error('Mic capture failed:', err);
-    }
-  }, [noiseGateThreshold, chunkIntervalMs]);
+        setState({ isCapturing: true, isSpeaking: false, volume: 0 });
+      } catch (err) {
+        console.error('Mic capture failed:', err);
+      }
+    },
+    [noiseGateThreshold, chunkIntervalMs],
+  );
 
   const stop = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -129,7 +138,7 @@ function float32ToBase64PCM(samples: Float32Array): string {
   const view = new DataView(buffer);
   for (let i = 0; i < samples.length; i++) {
     const s = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+    view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
   }
   const bytes = new Uint8Array(buffer);
   let binary = '';
@@ -137,4 +146,15 @@ function float32ToBase64PCM(samples: Float32Array): string {
     binary += String.fromCharCode(bytes[i]);
   }
   return btoa(binary);
+}
+
+function downsample(samples: Float32Array, fromRate: number, toRate: number): Float32Array {
+  if (fromRate === toRate) return samples;
+  const ratio = fromRate / toRate;
+  const newLength = Math.round(samples.length / ratio);
+  const result = new Float32Array(newLength);
+  for (let i = 0; i < newLength; i++) {
+    result[i] = samples[Math.round(i * ratio)];
+  }
+  return result;
 }

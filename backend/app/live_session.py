@@ -65,12 +65,14 @@ async def websocket_session_handler(websocket: WebSocket):
     async def on_gemini_audio(audio_bytes: bytes):
         """Gemini produced audio — forward to client as base64 PCM."""
         b64 = base64.b64encode(audio_bytes).decode("ascii")
-        await ws_send({
-            "type": "audio_chunk",
-            "pcm16_b64": b64,
-            "sample_rate_hz": 24000,
-            "channels": 1,
-        })
+        await ws_send(
+            {
+                "type": "audio_chunk",
+                "pcm16_b64": b64,
+                "sample_rate_hz": 24000,
+                "channels": 1,
+            }
+        )
 
     async def on_gemini_error(message: str):
         """Gemini reported an error."""
@@ -104,20 +106,37 @@ async def websocket_session_handler(websocket: WebSocket):
                     )
                     try:
                         await gemini.connect()
-                        logger.info("SESSION STARTED [%s] exercise=%s with Gemini Live", session_id, exercise)
+                        logger.info(
+                            "SESSION STARTED [%s] exercise=%s with Gemini Live",
+                            session_id,
+                            exercise,
+                        )
                     except Exception as exc:
-                        logger.error("Gemini Live connect failed: %s — running without AI", exc)
-                        await ws_send({"type": "error", "message": f"Gemini connect failed: {exc}"})
+                        logger.error(
+                            "Gemini Live connect failed: %s — running without AI", exc
+                        )
+                        await ws_send(
+                            {
+                                "type": "error",
+                                "message": f"Gemini connect failed: {exc}",
+                            }
+                        )
                         gemini = None
                 else:
-                    logger.info("SESSION STARTED [%s] exercise=%s (no API key)", session_id, exercise)
+                    logger.info(
+                        "SESSION STARTED [%s] exercise=%s (no API key)",
+                        session_id,
+                        exercise,
+                    )
 
-                await ws_send({
-                    "type": "session_started",
-                    "session_id": session_id,
-                    "config": config.model_dump(),
-                    "gemini_connected": gemini is not None,
-                })
+                await ws_send(
+                    {
+                        "type": "session_started",
+                        "session_id": session_id,
+                        "config": config.model_dump(),
+                        "gemini_connected": gemini is not None,
+                    }
+                )
 
             elif msg_type == "chat":
                 text = data.get("text", "").strip()
@@ -132,7 +151,13 @@ async def websocket_session_handler(websocket: WebSocket):
                 else:
                     # No Gemini — echo back a message
                     await ws_send({"type": "transcript", "role": "user", "text": text})
-                    await ws_send({"type": "transcript", "role": "agent", "text": "AI coaching requires a Gemini API key. Add one in Settings."})
+                    await ws_send(
+                        {
+                            "type": "transcript",
+                            "role": "agent",
+                            "text": "AI coaching requires a Gemini API key. Add one in Settings.",
+                        }
+                    )
 
             elif msg_type == "audio_chunk":
                 if not session_id or not gemini:
@@ -167,10 +192,12 @@ async def websocket_session_handler(websocket: WebSocket):
                         hold_duration=payload.workout_status.hold_duration,
                         angle_values=payload.angle_values,
                     )
-                    await gemini.send_grounding_context({
-                        "exercise": payload.exercise,
-                        "context": context,
-                    })
+                    await gemini.send_grounding_context(
+                        {
+                            "exercise": payload.exercise,
+                            "context": context,
+                        }
+                    )
 
                 await ws_send({"type": "batch_ack", "batch_number": batch_count})
 
@@ -191,7 +218,10 @@ async def websocket_session_handler(websocket: WebSocket):
 
                 logger.info(
                     "SESSION ENDED [%s] duration=%.1fs batches=%d reps=%d",
-                    session_id, duration, batch_count, total_reps,
+                    session_id,
+                    duration,
+                    batch_count,
+                    total_reps,
                 )
                 session_id = None
 

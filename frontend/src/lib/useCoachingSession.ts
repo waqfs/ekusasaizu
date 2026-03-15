@@ -47,64 +47,63 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
   const callbacksRef = useRef<CoachingCallbacks | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
-  const connect = useCallback((callbacks: CoachingCallbacks) => {
-    callbacksRef.current = callbacks;
+  const connect = useCallback(
+    (callbacks: CoachingCallbacks) => {
+      callbacksRef.current = callbacks;
 
-    const ws = new WebSocket(WS_URL);
-    wsRef.current = ws;
+      const ws = new WebSocket(WS_URL);
+      wsRef.current = ws;
 
-    ws.onopen = () => {
-      ws.send(JSON.stringify({
-        type: 'start',
-        config: {
-          exercise,
-          batch_interval_ms: batchIntervalMs,
-          audio_enabled: true,
-          gemini_api_key: geminiApiKey || undefined,
-        },
-      }));
-    };
-
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-
-      if (data.type === 'session_started') {
-        sessionIdRef.current = data.session_id;
-        setState(s => ({
-          ...s,
-          isConnected: true,
-          sessionId: data.session_id,
-          geminiConnected: !!data.gemini_connected,
-        }));
-
-        // Start periodic batch sending for workout data
-        intervalRef.current = setInterval(() => {
-          sendBatch();
-        }, batchIntervalMs);
-
-      } else if (data.type === 'transcript') {
-        callbacksRef.current?.onTranscript(data.role, data.text);
-
-      } else if (data.type === 'audio_chunk') {
-        callbacksRef.current?.onAudioChunk?.(
-          data.pcm16_b64,
-          data.sample_rate_hz || 24000,
+      ws.onopen = () => {
+        ws.send(
+          JSON.stringify({
+            type: 'start',
+            config: {
+              exercise,
+              batch_interval_ms: batchIntervalMs,
+              audio_enabled: true,
+              gemini_api_key: geminiApiKey || undefined,
+            },
+          }),
         );
+      };
 
-      } else if (data.type === 'error') {
-        console.error('Session error:', data.message);
-      }
-    };
+      ws.onmessage = event => {
+        const data = JSON.parse(event.data);
 
-    ws.onerror = (err) => {
-      console.error('WS error:', err);
-    };
+        if (data.type === 'session_started') {
+          sessionIdRef.current = data.session_id;
+          setState(s => ({
+            ...s,
+            isConnected: true,
+            sessionId: data.session_id,
+            geminiConnected: !!data.gemini_connected,
+          }));
 
-    ws.onclose = () => {
-      setState(s => ({ ...s, isConnected: false, geminiConnected: false }));
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [exercise, batchIntervalMs, geminiApiKey]);
+          // Start periodic batch sending for workout data
+          intervalRef.current = setInterval(() => {
+            sendBatch();
+          }, batchIntervalMs);
+        } else if (data.type === 'transcript') {
+          callbacksRef.current?.onTranscript(data.role, data.text);
+        } else if (data.type === 'audio_chunk') {
+          callbacksRef.current?.onAudioChunk?.(data.pcm16_b64, data.sample_rate_hz || 24000);
+        } else if (data.type === 'error') {
+          console.error('Session error:', data.message);
+        }
+      };
+
+      ws.onerror = err => {
+        console.error('WS error:', err);
+      };
+
+      ws.onclose = () => {
+        setState(s => ({ ...s, isConnected: false, geminiConnected: false }));
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+    },
+    [exercise, batchIntervalMs, geminiApiKey],
+  );
 
   const disconnect = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -125,12 +124,17 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
 
   const sendAudioChunk = useCallback((pcmB64: string, sampleRate: number = 16000) => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-    ws.send(JSON.stringify({
-      type: 'audio_chunk',
-      pcm16_b64: pcmB64,
-      sample_rate_hz: sampleRate,
-    }));
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      console.debug('[coaching] sendAudioChunk: WS not open, state=', ws?.readyState);
+      return;
+    }
+    ws.send(
+      JSON.stringify({
+        type: 'audio_chunk',
+        pcm16_b64: pcmB64,
+        sample_rate_hz: sampleRate,
+      }),
+    );
   }, []);
 
   const addFormEvent = useCallback((event: FormEvent) => {

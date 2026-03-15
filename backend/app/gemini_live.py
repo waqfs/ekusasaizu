@@ -123,7 +123,9 @@ class GeminiLiveSession:
         except Exception as exc:
             await self.on_error(f"send_text_failed: {exc}")
 
-    async def send_audio(self, pcm16_bytes: bytes, mime_type: str = "audio/pcm;rate=16000"):
+    async def send_audio(
+        self, pcm16_bytes: bytes, mime_type: str = "audio/pcm;rate=16000"
+    ):
         """Send audio chunk to Gemini Live session."""
         if not self.session or not pcm16_bytes:
             return
@@ -144,11 +146,13 @@ class GeminiLiveSession:
                         audio={"data": pcm16_bytes, "mime_type": mime_type}
                     )
             elif hasattr(self.session, "send"):
-                await self.session.send({
-                    "realtime_input": {
-                        "audio": {"data": pcm16_bytes, "mime_type": mime_type}
+                await self.session.send(
+                    {
+                        "realtime_input": {
+                            "audio": {"data": pcm16_bytes, "mime_type": mime_type}
+                        }
                     }
-                })
+                )
         except Exception as exc:
             await self.on_error(f"send_audio_failed: {exc}")
 
@@ -220,7 +224,9 @@ class GeminiLiveSession:
                 if isinstance(lowered.get("text"), str) and lowered["text"].strip():
                     texts.append(lowered["text"].strip())
 
-                if "data" in lowered and isinstance(lowered["data"], (bytes, bytearray)):
+                if "data" in lowered and isinstance(
+                    lowered["data"], (bytes, bytearray)
+                ):
                     mime = str(lowered.get("mime_type", "")).lower()
                     if "audio" in mime or not mime:
                         audios.append(bytes(lowered["data"]))

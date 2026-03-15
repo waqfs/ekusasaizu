@@ -10,9 +10,7 @@ import { useAudioCapture } from '../../lib/useAudioCapture';
 import { fetchExerciseConfig } from '../../lib/api';
 import type { ExerciseConfig } from '../../lib/configAnalyzer';
 
-const mockMessages = [
-  { from: 'agent', text: "Hey! I'm Kora, your AI exercise coach. Enable your camera to start, or ask me about exercises!" },
-];
+const mockMessages = [{ from: 'agent', text: "Hey! I'm Kora, your AI exercise coach. Enable your camera to start, or ask me about exercises!" }];
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -145,11 +143,14 @@ export function Live() {
         onTranscript: (role, text) => {
           setMessages(prev => [...prev, { from: role === 'agent' ? 'agent' : 'user', text }]);
         },
-        onAudioChunk: (pcmB64) => {
+        onAudioChunk: pcmB64 => {
           playAudio(pcmB64);
         },
+      });      // Auto-start microphone for Gemini Live audio
+      audio.start((chunk) => {
+        coaching.sendAudioChunk(chunk);
       });
-    }
+      setMicOn(true);    }
   };
 
   // Mic toggle
@@ -158,7 +159,7 @@ export function Live() {
       audio.stop();
       setMicOn(false);
     } else {
-      audio.start((chunk) => {
+      audio.start(chunk => {
         coaching.sendAudioChunk(chunk);
       });
       setMicOn(true);
@@ -412,9 +413,7 @@ export function Live() {
                 >
                   {coaching.isConnected ? '● AI Connected' : '○ AI Offline'}
                 </div>
-                {micOn && audio.isSpeaking && (
-                  <div class="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">🎤 Speaking</div>
-                )}
+                {micOn && audio.isSpeaking && <div class="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">🎤 Speaking</div>}
               </div>
             </div>
           </div>

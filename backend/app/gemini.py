@@ -87,21 +87,27 @@ async def _text_to_speech(api_key: str, text: str) -> str | None:
                 response_modalities=["AUDIO"],
                 speech_config=types.SpeechConfig(
                     voice_config=types.VoiceConfig(
-                        prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
+                        prebuilt_voice_config=types.PrebuiltVoiceConfig(
+                            voice_name="Kore"
+                        )
                     )
                 ),
             ),
         )
 
         # Extract audio data from response
-        if (response.candidates and response.candidates[0].content
-                and response.candidates[0].content.parts):
+        if (
+            response.candidates
+            and response.candidates[0].content
+            and response.candidates[0].content.parts
+        ):
             for part in response.candidates[0].content.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
+                if hasattr(part, "inline_data") and part.inline_data:
                     import base64
+
                     audio_bytes = part.inline_data.data
                     if isinstance(audio_bytes, bytes):
-                        return base64.b64encode(audio_bytes).decode('utf-8')
+                        return base64.b64encode(audio_bytes).decode("utf-8")
                     return audio_bytes  # Already base64 string
 
         logger.warning("TTS response had no audio parts")
@@ -162,7 +168,14 @@ def _build_contents(session_id: str, user_message: str) -> list[dict]:
     system_prompt = get_system_prompt()
     contents = [
         {"role": "user", "parts": [{"text": system_prompt}]},
-        {"role": "model", "parts": [{"text": "Understood. I'm Kora, your exercise coach. I can see the available exercises and I'm ready to guide your workout. What would you like to work on today?"}]},
+        {
+            "role": "model",
+            "parts": [
+                {
+                    "text": "Understood. I'm Kora, your exercise coach. I can see the available exercises and I'm ready to guide your workout. What would you like to work on today?"
+                }
+            ],
+        },
     ]
 
     # Add conversation history
@@ -177,7 +190,9 @@ def _build_contents(session_id: str, user_message: str) -> list[dict]:
     return contents
 
 
-async def send_chat(session_id: str, user_text: str, want_audio: bool = True) -> GeminiResponse:
+async def send_chat(
+    session_id: str, user_text: str, want_audio: bool = True
+) -> GeminiResponse:
     """Handle a user chat message — send to Gemini with conversation history."""
     api_key = _get_api_key(session_id)
 
@@ -216,7 +231,12 @@ async def send_chat(session_id: str, user_text: str, want_audio: bool = True) ->
         _add_to_history(session_id, "model", raw_text)
         clean_text, commands = _parse_commands(raw_text)
 
-        logger.info("GEMINI CHAT RESPONSE [%s] → %s (commands=%s)", session_id, clean_text[:80], commands)
+        logger.info(
+            "GEMINI CHAT RESPONSE [%s] → %s (commands=%s)",
+            session_id,
+            clean_text[:80],
+            commands,
+        )
 
         # Generate audio response
         audio_b64 = None
@@ -260,7 +280,9 @@ async def send_to_gemini(request: GeminiRequest) -> GeminiResponse:
         request.exercise,
         request.rep_count,
         "yes" if request.audio_chunk_b64 else "no",
-        "user" if request.session_id in _session_api_keys else ("env" if api_key else "none"),
+        "user"
+        if request.session_id in _session_api_keys
+        else ("env" if api_key else "none"),
     )
 
     if not api_key:
@@ -277,12 +299,14 @@ async def send_to_gemini(request: GeminiRequest) -> GeminiResponse:
         user_parts = [{"text": request.prompt}]
 
         if request.audio_chunk_b64:
-            user_parts.append({
-                "inline_data": {
-                    "mime_type": "audio/l16;rate=16000",
-                    "data": request.audio_chunk_b64,
+            user_parts.append(
+                {
+                    "inline_data": {
+                        "mime_type": "audio/l16;rate=16000",
+                        "data": request.audio_chunk_b64,
+                    }
                 }
-            })
+            )
 
         _add_to_history(request.session_id, "user", request.prompt)
         contents = _build_contents(request.session_id, request.prompt)
@@ -324,13 +348,17 @@ def _mock_chat_response(user_text: str) -> str:
     """Generate a mock chat response based on user input."""
     lower = user_text.lower()
 
-    if any(w in lower for w in ["what exercise", "what can i do", "full body", "recommend"]):
-        return ("Great question! Here's what I have available:\n"
-                "- **Squats** — excellent for legs and core\n"
-                "- **Lat Pull Downs** — great for upper back and arms\n"
-                "- **Straight Leg Raises** — fantastic for core strength\n"
-                "- **Single Leg Raises** — perfect for balance and hip mobility\n\n"
-                "What would you like to start with?")
+    if any(
+        w in lower for w in ["what exercise", "what can i do", "full body", "recommend"]
+    ):
+        return (
+            "Great question! Here's what I have available:\n"
+            "- **Squats** — excellent for legs and core\n"
+            "- **Lat Pull Downs** — great for upper back and arms\n"
+            "- **Straight Leg Raises** — fantastic for core strength\n"
+            "- **Single Leg Raises** — perfect for balance and hip mobility\n\n"
+            "What would you like to start with?"
+        )
 
     if any(w in lower for w in ["squat"]):
         return "Let's get those squats going! Stand in front of your camera and I'll track your form. <<START_EXERCISE:squat>>"
@@ -345,11 +373,15 @@ def _mock_chat_response(user_text: str) -> str:
         return "Single leg raises — great for balance! Let's get started. <<START_EXERCISE:single_leg_raise>>"
 
     if any(w in lower for w in ["acl", "knee", "physical therapy", "pt", "rehab"]):
-        return ("For ACL recovery and knee rehab, I'd recommend **Straight Leg Raises** — "
-                "they strengthen the quads without putting stress on the knee joint. "
-                "Want me to start that exercise? <<START_EXERCISE:straight_leg_raises>>")
+        return (
+            "For ACL recovery and knee rehab, I'd recommend **Straight Leg Raises** — "
+            "they strengthen the quads without putting stress on the knee joint. "
+            "Want me to start that exercise? <<START_EXERCISE:straight_leg_raises>>"
+        )
 
-    if any(w in lower for w in ["yes", "yeah", "sure", "ok", "let's go", "start", "ready"]):
+    if any(
+        w in lower for w in ["yes", "yeah", "sure", "ok", "let's go", "start", "ready"]
+    ):
         return "Ready when you are! Get into position in front of your camera."
 
     if any(w in lower for w in ["thanks", "thank you"]):

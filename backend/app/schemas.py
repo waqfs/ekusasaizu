@@ -78,7 +78,9 @@ class GeminiRequest(BaseModel):
     rep_count: int = 0
     form_events: list[FormEvent] = []
     angle_values: dict[str, float] = {}
-    has_meaningful_events: bool = False  # Whether this batch has events worth responding to
+    has_meaningful_events: bool = (
+        False  # Whether this batch has events worth responding to
+    )
 
 
 class GeminiResponse(BaseModel):
@@ -87,6 +89,8 @@ class GeminiResponse(BaseModel):
     session_id: str
     coaching_text: str
     suggestions: list[str] = []
-    commands: list[dict] = []  # e.g. [{"type": "start_exercise", "exercise_id": "squat"}]
+    commands: list[
+        dict
+    ] = []  # e.g. [{"type": "start_exercise", "exercise_id": "squat"}]
     audio_b64: str | None = None  # Base64 PCM audio response from Gemini
     score_adjustment: float | None = None
