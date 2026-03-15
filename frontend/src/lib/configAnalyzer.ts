@@ -93,6 +93,7 @@ export interface ExerciseConfig {
     min_dwell_ms: number;
     velocity_threshold: number;
   };
+  per_side?: boolean;
 }
 
 // --- Angle computation ---
@@ -151,27 +152,41 @@ class AngleBuffer {
   leftRight: [number, number] = [0, 0];
 }
 
+// --- Per-side tracking state ---
+
+interface SideState {
+  angleBuffers: Map<string, AngleBuffer>;
+  currentPhase: string;
+  phaseEnteredAt: number;
+  repPhaseIndex: number;
+}
+
 // --- Config-Driven Analyzer ---
 
 export class ConfigDrivenAnalyzer {
   private config: ExerciseConfig;
-  private angleBuffers: Map<string, AngleBuffer> = new Map();
-  private currentPhase: string;
-  private phaseEnteredAt = 0;
-  private repPhaseIndex = 0; // tracks progress through rep_cycle
+  private sides: SideState[];
   private _repCount = 0;
   private _lastRepScore = 0;
-  private minAnglesAtPhase: Map<string, Map<string, number>> = new Map(); // per-phase angle minimums
 
   constructor(config: ExerciseConfig) {
     this.config = config;
-    this.currentPhase = config.phase_order[0];
+    const startPhase = config.phase_order[0];
 
-    // Initialize angle buffers
-    for (const [name, angleCfg] of Object.entries(config.angles)) {
-      const buf = new AngleBuffer(config.smoothing.ema_alpha, config.smoothing.buffer_size);
-      this.angleBuffers.set(name, buf);
+    if (config.per_side) {
+      // Two independent side trackers
+      this.sides = [this.createSide(startPhase), this.createSide(startPhase)];
+    } else {
+      this.sides = [this.createSide(startPhase)];
     }
+  }
+
+  private createSide(startPhase: string): SideState {
+    const angleBuffers = new Map<string, AngleBuffer>();
+    for (const name of Object.keys(this.config.angles)) {
+      angleBuffers.set(name, new AngleBuffer(this.config.smoothing.ema_alpha, this.config.smoothing.buffer_size));
+    }
+    return { angleBuffers, currentPhase: startPhase, phaseEnteredAt: 0, repPhaseIndex: 0 };
   }
 
   get repCount(): number {
@@ -181,17 +196,26 @@ export class ConfigDrivenAnalyzer {
     return this._lastRepScore;
   }
   get phase(): string {
-    return this.currentPhase;
+    return this.sides[0].currentPhase;
   }
   get phaseIndex(): number {
-    return this.repPhaseIndex;
+    return this.sides[0].repPhaseIndex;
   }
 
   /** Get current smoothed angle values for debug display */
   getAngleValues(): Record<string, number> {
     const result: Record<string, number> = {};
-    for (const [name, buffer] of this.angleBuffers) {
-      result[name] = Math.round(buffer.value);
+    if (this.config.per_side) {
+      for (const [name, buffer] of this.sides[0].angleBuffers) {
+        result[`L_${name}`] = Math.round(buffer.value);
+      }
+      for (const [name, buffer] of this.sides[1].angleBuffers) {
+        result[`R_${name}`] = Math.round(buffer.value);
+      }
+    } else {
+      for (const [name, buffer] of this.sides[0].angleBuffers) {
+        result[name] = Math.round(buffer.value);
+      }
     }
     return result;
   }
@@ -205,28 +229,37 @@ export class ConfigDrivenAnalyzer {
     const now = performance.now();
     const events: FormEvent[] = [];
 
-    // 1. Compute and smooth all configured angles
-    this.computeAngles(landmarks);
+    if (this.config.per_side) {
+      // Compute angles for each side independently
+      this.computeAnglesForSide(landmarks, this.sides[0], 'left');
+      this.computeAnglesForSide(landmarks, this.sides[1], 'right');
 
-    // 2. Update phase state machine
-    const phaseEvent = this.updatePhase(now);
-    if (phaseEvent) events.push(phaseEvent);
+      // Update phase machines for each side
+      for (const side of this.sides) {
+        const phaseEvent = this.updatePhase(now, side);
+        if (phaseEvent) events.push(phaseEvent);
+      }
+    } else {
+      // Standard averaged angles
+      this.computeAnglesAveraged(landmarks, this.sides[0]);
+      const phaseEvent = this.updatePhase(now, this.sides[0]);
+      if (phaseEvent) events.push(phaseEvent);
+    }
 
-    // 3. Run form checks
+    // Run form checks using the first (or averaged) side
     const formEvents = this.runFormChecks();
     events.push(...formEvents);
 
-    // If no issues detected, emit good_form
-    if (formEvents.length === 0 && this.currentPhase !== 'idle') {
+    if (formEvents.length === 0 && this.sides[0].currentPhase !== 'idle') {
       events.push({ type: 'good_form' });
     }
 
     return events;
   }
 
-  private computeAngles(landmarks: NormalizedLandmark[]): void {
+  private computeAnglesAveraged(landmarks: NormalizedLandmark[], side: SideState): void {
     for (const [name, angleCfg] of Object.entries(this.config.angles)) {
-      const buffer = this.angleBuffers.get(name)!;
+      const buffer = side.angleBuffers.get(name)!;
       const leftAngle = angleBetween(landmarks[angleCfg.left[0]], landmarks[angleCfg.left[1]], landmarks[angleCfg.left[2]]);
       const rightAngle = angleBetween(landmarks[angleCfg.right[0]], landmarks[angleCfg.right[1]], landmarks[angleCfg.right[2]]);
       const avg = angleCfg.average ? (leftAngle + rightAngle) / 2 : leftAngle;
@@ -235,63 +268,61 @@ export class ConfigDrivenAnalyzer {
     }
   }
 
-  private updatePhase(now: number): FormEvent | null {
+  private computeAnglesForSide(landmarks: NormalizedLandmark[], side: SideState, which: 'left' | 'right'): void {
+    for (const [name, angleCfg] of Object.entries(this.config.angles)) {
+      const buffer = side.angleBuffers.get(name)!;
+      const triplet = which === 'left' ? angleCfg.left : angleCfg.right;
+      const angle = angleBetween(landmarks[triplet[0]], landmarks[triplet[1]], landmarks[triplet[2]]);
+      buffer.update(angle);
+    }
+  }
+
+  private updatePhase(now: number, side: SideState): FormEvent | null {
     const minDwell = this.config.smoothing.min_dwell_ms;
 
-    // Check if we should exit current phase
-    const currentPhaseCfg = this.config.phases[this.currentPhase];
+    const currentPhaseCfg = this.config.phases[side.currentPhase];
     if (!currentPhaseCfg) return null;
 
     const exitCondition = currentPhaseCfg.exit;
-    if (this.checkCondition(exitCondition) && now - this.phaseEnteredAt >= minDwell) {
-      // Find the next phase in the cycle
-      const nextPhaseIndex = (this.config.phase_order.indexOf(this.currentPhase) + 1) % this.config.phase_order.length;
+    if (this.checkCondition(exitCondition, side) && now - side.phaseEnteredAt >= minDwell) {
+      const nextPhaseIndex = (this.config.phase_order.indexOf(side.currentPhase) + 1) % this.config.phase_order.length;
       const nextPhase = this.config.phase_order[nextPhaseIndex];
       const nextPhaseCfg = this.config.phases[nextPhase];
 
-      if (nextPhaseCfg && this.checkCondition(nextPhaseCfg.condition)) {
-        const prevPhase = this.currentPhase;
-        this.currentPhase = nextPhase;
-        this.phaseEnteredAt = now;
-
-        // Track rep cycle progress
-        return this.trackRepCycle(prevPhase, nextPhase);
+      if (nextPhaseCfg && this.checkCondition(nextPhaseCfg.condition, side)) {
+        const prevPhase = side.currentPhase;
+        side.currentPhase = nextPhase;
+        side.phaseEnteredAt = now;
+        return this.trackRepCycle(prevPhase, nextPhase, side);
       }
     }
 
     return null;
   }
 
-  private trackRepCycle(fromPhase: string, toPhase: string): FormEvent | null {
+  private trackRepCycle(fromPhase: string, toPhase: string, side: SideState): FormEvent | null {
     const cycle = this.config.rep_cycle;
-
-    // Check if this transition matches the expected next step in the cycle
-    const expectedFrom = cycle[this.repPhaseIndex];
-    const expectedTo = cycle[this.repPhaseIndex + 1];
+    const expectedFrom = cycle[side.repPhaseIndex];
+    const expectedTo = cycle[side.repPhaseIndex + 1];
 
     if (fromPhase === expectedFrom && toPhase === expectedTo) {
-      this.repPhaseIndex++;
+      side.repPhaseIndex++;
 
-      // Check if we've completed a full rep cycle
-      if (this.repPhaseIndex >= cycle.length - 1) {
-        this.repPhaseIndex = 0;
+      if (side.repPhaseIndex >= cycle.length - 1) {
+        side.repPhaseIndex = 0;
         this._repCount++;
         this._lastRepScore = this.computeRepScore();
         return { type: 'rep_completed', score: this._lastRepScore };
       }
     } else {
-      // Reset cycle tracking if an unexpected transition occurs
-      this.repPhaseIndex = 0;
-      if (toPhase === cycle[0]) {
-        // We've returned to the start position
-      }
+      side.repPhaseIndex = 0;
     }
 
     return null;
   }
 
-  private checkCondition(condition: PhaseCondition): boolean {
-    const buffer = this.angleBuffers.get(condition.angle);
+  private checkCondition(condition: PhaseCondition, side: SideState): boolean {
+    const buffer = side.angleBuffers.get(condition.angle);
     if (!buffer) return false;
 
     const val = buffer.value;
@@ -337,7 +368,7 @@ export class ConfigDrivenAnalyzer {
 
   private checkAngleThreshold(check: FormCheckConfig): FormEvent | null {
     if (!check.angle) return null;
-    const buffer = this.angleBuffers.get(check.angle);
+    const buffer = this.sides[0].angleBuffers.get(check.angle);
     if (!buffer) return null;
 
     const val = buffer.value;
@@ -352,7 +383,7 @@ export class ConfigDrivenAnalyzer {
 
   private checkAngleRange(check: FormCheckConfig): FormEvent | null {
     if (!check.angle) return null;
-    const buffer = this.angleBuffers.get(check.angle);
+    const buffer = this.sides[0].angleBuffers.get(check.angle);
     if (!buffer) return null;
 
     const val = buffer.value;
@@ -373,7 +404,7 @@ export class ConfigDrivenAnalyzer {
 
   private checkAngleSymmetry(check: FormCheckConfig): FormEvent | null {
     if (!check.angle) return null;
-    const buffer = this.angleBuffers.get(check.angle);
+    const buffer = this.sides[0].angleBuffers.get(check.angle);
     if (!buffer) return null;
 
     const [left, right] = buffer.leftRight;
@@ -386,7 +417,7 @@ export class ConfigDrivenAnalyzer {
 
   private checkVelocity(check: FormCheckConfig): FormEvent | null {
     if (!check.angle) return null;
-    const buffer = this.angleBuffers.get(check.angle);
+    const buffer = this.sides[0].angleBuffers.get(check.angle);
     if (!buffer) return null;
 
     if (check.max_velocity !== undefined && Math.abs(buffer.velocity) > check.max_velocity) {
@@ -403,7 +434,7 @@ export class ConfigDrivenAnalyzer {
       let score = 100;
 
       if (component.angle) {
-        const buffer = this.angleBuffers.get(component.angle);
+        const buffer = this.sides[0].angleBuffers.get(component.angle);
         if (buffer) {
           const val = buffer.value;
           const ideal = component.ideal_at_bottom ?? component.ideal_at_top ?? component.ideal ?? val;
@@ -433,11 +464,11 @@ export class ConfigDrivenAnalyzer {
   reset(): void {
     this._repCount = 0;
     this._lastRepScore = 0;
-    this.repPhaseIndex = 0;
-    this.currentPhase = this.config.phase_order[0];
-    this.phaseEnteredAt = 0;
-    for (const buffer of this.angleBuffers.values()) {
-      // Reinitialize buffer
+    const startPhase = this.config.phase_order[0];
+    for (const side of this.sides) {
+      side.repPhaseIndex = 0;
+      side.currentPhase = startPhase;
+      side.phaseEnteredAt = 0;
     }
   }
 }
