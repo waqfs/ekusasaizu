@@ -5,54 +5,124 @@
   "description": "Seated cable exercise targeting the latissimus dorsi, engaging biceps and upper back.",
   "camera_angle": "front",
   "required_landmarks": {
-    "left": [11, 13, 15],
-    "right": [12, 14, 16],
-    "upper": [23, 24]
+    "left": [
+      11,
+      13,
+      15
+    ],
+    "right": [
+      12,
+      14,
+      16
+    ],
+    "upper": [
+      23,
+      24
+    ]
   },
   "angles": {
     "elbow": {
       "description": "Elbow flexion — primary phase driver",
-      "left": [11, 13, 15],
-      "right": [12, 14, 16],
+      "left": [
+        11,
+        13,
+        15
+      ],
+      "right": [
+        12,
+        14,
+        16
+      ],
       "average": true
     },
     "shoulder": {
       "description": "Shoulder angle — arm overhead extension",
-      "left": [13, 11, 23],
-      "right": [14, 12, 24],
+      "left": [
+        13,
+        11,
+        23
+      ],
+      "right": [
+        14,
+        12,
+        24
+      ],
       "average": true
     },
     "torso_lean": {
       "description": "Shoulder-hip vertical alignment — backward lean detector",
-      "left": [11, 23, 25],
-      "right": [12, 24, 26],
+      "left": [
+        11,
+        23,
+        25
+      ],
+      "right": [
+        12,
+        24,
+        26
+      ],
       "average": true
     }
   },
   "phases": {
     "top": {
       "description": "Arms extended overhead, holding the bar",
-      "condition": { "angle": "elbow", "above": 155 },
-      "exit": { "angle": "elbow", "below": 150 }
+      "condition": {
+        "angle": "shoulder",
+        "above": 140
+      },
+      "exit": {
+        "angle": "shoulder",
+        "below": 130
+      }
     },
     "descending": {
       "description": "Pulling the bar down toward chest",
-      "condition": { "angle": "elbow", "below": 150, "direction": "decreasing" },
-      "exit": { "angle": "elbow", "below": 80 }
+      "condition": {
+        "angle": "shoulder",
+        "below": 130
+      },
+      "exit": {
+        "angle": "shoulder",
+        "below": 60
+      }
     },
     "bottom": {
       "description": "Bar at chest level — full contraction",
-      "condition": { "angle": "elbow", "below": 80 },
-      "exit": { "angle": "elbow", "above": 85 }
+      "condition": {
+        "angle": "shoulder",
+        "below": 60
+      },
+      "exit": {
+        "angle": "shoulder",
+        "above": 70
+      }
     },
     "ascending": {
       "description": "Releasing the bar back up with control",
-      "condition": { "angle": "elbow", "above": 85, "direction": "increasing" },
-      "exit": { "angle": "elbow", "above": 155 }
+      "condition": {
+        "angle": "shoulder",
+        "above": 70
+      },
+      "exit": {
+        "angle": "shoulder",
+        "above": 140
+      }
     }
   },
-  "phase_order": ["top", "descending", "bottom", "ascending"],
-  "rep_cycle": ["top", "descending", "bottom", "ascending", "top"],
+  "phase_order": [
+    "top",
+    "descending",
+    "bottom",
+    "ascending"
+  ],
+  "rep_cycle": [
+    "top",
+    "descending",
+    "bottom",
+    "ascending",
+    "top"
+  ],
   "form_checks": [
     {
       "id": "lean_back",
@@ -109,10 +179,37 @@
   ],
   "scoring": {
     "components": [
-      { "name": "range_of_motion", "weight": 0.35, "angle": "elbow", "ideal_at_bottom": 70, "ideal_at_top": 165, "penalty_per_degree": 2 },
-      { "name": "control", "weight": 0.3, "type": "tempo", "ideal_phase_ratio": { "descending": 0.4, "ascending": 0.4, "bottom": 0.1, "top": 0.1 } },
-      { "name": "symmetry", "weight": 0.2, "form_check": "symmetry", "penalty_multiplier": 5 },
-      { "name": "posture", "weight": 0.15, "form_check": "lean_back", "penalty_multiplier": 20 }
+      {
+        "name": "range_of_motion",
+        "weight": 0.35,
+        "angle": "elbow",
+        "ideal_at_bottom": 70,
+        "ideal_at_top": 165,
+        "penalty_per_degree": 2
+      },
+      {
+        "name": "control",
+        "weight": 0.3,
+        "type": "tempo",
+        "ideal_phase_ratio": {
+          "descending": 0.4,
+          "ascending": 0.4,
+          "bottom": 0.1,
+          "top": 0.1
+        }
+      },
+      {
+        "name": "symmetry",
+        "weight": 0.2,
+        "form_check": "symmetry",
+        "penalty_multiplier": 5
+      },
+      {
+        "name": "posture",
+        "weight": 0.15,
+        "form_check": "lean_back",
+        "penalty_multiplier": 20
+      }
     ]
   },
   "smoothing": {

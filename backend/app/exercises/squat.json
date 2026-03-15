@@ -5,62 +5,138 @@
   "description": "A fundamental lower body exercise targeting quads, glutes, and core stability.",
   "camera_angle": "front",
   "required_landmarks": {
-    "left": [23, 25, 27],
-    "right": [24, 26, 28],
-    "upper": [11, 12]
+    "left": [
+      23,
+      25,
+      27
+    ],
+    "right": [
+      24,
+      26,
+      28
+    ],
+    "upper": [
+      11,
+      12
+    ]
   },
   "angles": {
     "knee": {
       "description": "Knee flexion angle — primary phase driver",
-      "left": [23, 25, 27],
-      "right": [24, 26, 28],
+      "left": [
+        23,
+        25,
+        27
+      ],
+      "right": [
+        24,
+        26,
+        28
+      ],
       "average": true
     },
     "hip": {
       "description": "Hip flexion — torso lean indicator",
-      "left": [11, 23, 25],
-      "right": [12, 24, 26],
+      "left": [
+        11,
+        23,
+        25
+      ],
+      "right": [
+        12,
+        24,
+        26
+      ],
       "average": true
     },
     "body_line": {
       "description": "Shoulder-hip-ankle alignment",
-      "left": [11, 23, 27],
-      "right": [12, 24, 28],
+      "left": [
+        11,
+        23,
+        27
+      ],
+      "right": [
+        12,
+        24,
+        28
+      ],
       "average": true
     }
   },
   "phases": {
     "top": {
       "description": "Standing upright",
-      "condition": { "angle": "knee", "above": 165 },
-      "exit": { "angle": "knee", "below": 160 }
+      "condition": {
+        "angle": "hip",
+        "above": 155
+      },
+      "exit": {
+        "angle": "hip",
+        "below": 145
+      }
     },
     "descending": {
       "description": "Lowering into squat",
-      "condition": { "angle": "knee", "below": 160, "direction": "decreasing" },
-      "exit": { "angle": "knee", "below": 95 }
+      "condition": {
+        "angle": "hip",
+        "below": 145
+      },
+      "exit": {
+        "angle": "hip",
+        "below": 110
+      }
     },
     "bottom": {
-      "description": "Full depth — thighs parallel or below",
-      "condition": { "angle": "knee", "below": 95 },
-      "exit": { "angle": "knee", "above": 100 }
+      "description": "At or near parallel depth",
+      "condition": {
+        "angle": "hip",
+        "below": 110
+      },
+      "exit": {
+        "angle": "hip",
+        "above": 120
+      }
     },
     "ascending": {
       "description": "Rising back to standing",
-      "condition": { "angle": "knee", "above": 100, "direction": "increasing" },
-      "exit": { "angle": "knee", "above": 165 }
+      "condition": {
+        "angle": "hip",
+        "above": 120
+      },
+      "exit": {
+        "angle": "hip",
+        "above": 155
+      }
     }
   },
-  "phase_order": ["top", "descending", "bottom", "ascending"],
-  "rep_cycle": ["top", "descending", "bottom", "ascending", "top"],
+  "phase_order": [
+    "top",
+    "descending",
+    "bottom",
+    "ascending"
+  ],
+  "rep_cycle": [
+    "top",
+    "descending",
+    "bottom",
+    "ascending",
+    "top"
+  ],
   "form_checks": [
     {
       "id": "knee_cave",
       "name": "Knee Cave",
       "type": "distance_ratio",
       "description": "Knees should track over toes, not collapse inward",
-      "numerator_landmarks": [25, 26],
-      "denominator_landmarks": [27, 28],
+      "numerator_landmarks": [
+        25,
+        26
+      ],
+      "denominator_landmarks": [
+        27,
+        28
+      ],
       "axis": "x",
       "good_min": 0.8,
       "warn_below": 0.7,
@@ -98,9 +174,26 @@
   ],
   "scoring": {
     "components": [
-      { "name": "depth", "weight": 0.4, "angle": "knee", "ideal_at_bottom": 90, "penalty_per_degree": 2 },
-      { "name": "alignment", "weight": 0.3, "form_check": "knee_cave", "penalty_multiplier": 30 },
-      { "name": "torso", "weight": 0.3, "angle": "hip", "ideal": 90, "penalty_per_degree": 2 }
+      {
+        "name": "depth",
+        "weight": 0.4,
+        "angle": "knee",
+        "ideal_at_bottom": 90,
+        "penalty_per_degree": 2
+      },
+      {
+        "name": "alignment",
+        "weight": 0.3,
+        "form_check": "knee_cave",
+        "penalty_multiplier": 30
+      },
+      {
+        "name": "torso",
+        "weight": 0.3,
+        "angle": "hip",
+        "ideal": 90,
+        "penalty_per_degree": 2
+      }
     ]
   },
   "smoothing": {
