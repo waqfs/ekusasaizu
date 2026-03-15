@@ -11,6 +11,8 @@ const INITIAL_STATE: WorkoutState = {
   isBodyVisible: false,
   holdDuration: 0,
   events: [],
+  angleValues: {},
+  repCycleIndex: 0,
 };
 
 /**
@@ -52,6 +54,7 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
 
       const events = analyzer.process(landmarks);
       const issues: string[] = [];
+      const angleValues = analyzer.getAngleValues();
 
       setState(prev => {
         let { repCount, currentPhase, holdDuration } = prev;
@@ -91,6 +94,8 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
           isBodyVisible: true,
           holdDuration,
           events,
+          angleValues,
+          repCycleIndex: analyzer.phaseIndex,
         };
       });
     },

@@ -20,6 +20,8 @@ export interface WorkoutState {
   isBodyVisible: boolean;
   holdDuration: number;
   events: FormEvent[];
+  angleValues: Record<string, number>;
+  repCycleIndex: number;
 }
 
 export interface PoseWorkerMessage {

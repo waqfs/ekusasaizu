@@ -173,6 +173,16 @@ export class ConfigDrivenAnalyzer {
   get repCount(): number { return this._repCount; }
   get lastRepScore(): number { return this._lastRepScore; }
   get phase(): string { return this.currentPhase; }
+  get phaseIndex(): number { return this.repPhaseIndex; }
+
+  /** Get current smoothed angle values for debug display */
+  getAngleValues(): Record<string, number> {
+    const result: Record<string, number> = {};
+    for (const [name, buffer] of this.angleBuffers) {
+      result[name] = Math.round(buffer.value);
+    }
+    return result;
+  }
 
   /**
    * Process a frame of landmarks and return form events.
