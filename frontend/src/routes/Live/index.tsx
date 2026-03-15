@@ -146,11 +146,12 @@ export function Live() {
         onAudioChunk: pcmB64 => {
           playAudio(pcmB64);
         },
-      });      // Auto-start microphone for Gemini Live audio
-      audio.start((chunk) => {
+      }); // Auto-start microphone for Gemini Live audio
+      audio.start(chunk => {
         coaching.sendAudioChunk(chunk);
       });
-      setMicOn(true);    }
+      setMicOn(true);
+    }
   };
 
   // Mic toggle

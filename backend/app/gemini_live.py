@@ -62,7 +62,6 @@ class GeminiLiveSession:
 
         config = {
             "response_modalities": ["AUDIO"],
-            "system_instruction": self.system_instruction,
         }
 
         self._running = True
@@ -89,6 +88,10 @@ class GeminiLiveSession:
             raise RuntimeError(f"Gemini Live connect failed: {err}")
 
         logger.info("Gemini Live session connected")
+
+        # Send system instruction as initial text (not in config for native audio model)
+        if self.system_instruction:
+            await self.send_text(self.system_instruction)
 
     async def close(self):
         """Close the Gemini Live session."""
@@ -136,6 +139,9 @@ class GeminiLiveSession:
 
         try:
             types = self._genai_types
+            logger.debug(
+                "Sending audio chunk: %d bytes, mime=%s", len(pcm16_bytes), mime_type
+            )
             if hasattr(self.session, "send_realtime_input"):
                 if types and hasattr(types, "Blob"):
                     await self.session.send_realtime_input(
@@ -154,6 +160,7 @@ class GeminiLiveSession:
                     }
                 )
         except Exception as exc:
+            logger.exception("send_audio failed")
             await self.on_error(f"send_audio_failed: {exc}")
 
     async def send_grounding_context(self, context: dict):
@@ -195,8 +202,18 @@ class GeminiLiveSession:
     async def _receive_loop(self):
         """Receive and dispatch responses from Gemini."""
         try:
+            logger.info("Gemini receive loop started")
             async for response in self.session.receive():
                 texts, audios = self._extract_response_parts(response)
+
+                if texts:
+                    logger.debug("Gemini text response: %d parts", len(texts))
+                if audios:
+                    logger.debug(
+                        "Gemini audio response: %d parts, total bytes=%d",
+                        len(audios),
+                        sum(len(a) for a in audios),
+                    )
 
                 for text in texts:
                     await self.on_text(text)
@@ -205,8 +222,10 @@ class GeminiLiveSession:
                     await self.on_audio(audio)
 
         except asyncio.CancelledError:
+            logger.info("Gemini receive loop cancelled")
             return
         except Exception as exc:
+            logger.exception("Gemini receive loop failed")
             await self.on_error(f"receive_loop_failed: {exc}")
 
     def _extract_response_parts(self, response: Any) -> tuple[list[str], list[bytes]]:

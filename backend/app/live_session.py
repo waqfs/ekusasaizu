@@ -161,12 +161,22 @@ async def websocket_session_handler(websocket: WebSocket):
 
             elif msg_type == "audio_chunk":
                 if not session_id or not gemini:
+                    logger.debug(
+                        "audio_chunk dropped: session=%s gemini=%s",
+                        session_id,
+                        gemini is not None,
+                    )
                     continue
 
                 pcm16_b64 = data.get("pcm16_b64", "")
                 if pcm16_b64:
                     pcm_bytes = base64.b64decode(pcm16_b64)
                     sample_rate = data.get("sample_rate_hz", 16000)
+                    logger.debug(
+                        "Forwarding audio chunk to Gemini: %d bytes, rate=%d",
+                        len(pcm_bytes),
+                        sample_rate,
+                    )
                     await gemini.send_audio(
                         pcm_bytes,
                         mime_type=f"audio/pcm;rate={sample_rate}",
