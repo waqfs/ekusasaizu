@@ -43,9 +43,9 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
         return;
       }
 
-      // Minimal body check — at least hips should be visible at low threshold
-      const CORE_LANDMARKS = [23, 24]; // left hip, right hip
-      if (!isBodyVisible(landmarks, CORE_LANDMARKS, 0.15)) {
+      // Body check — require shoulders + hips to be visible
+      const CORE_LANDMARKS = [11, 12, 23, 24]; // shoulders, hips
+      if (!isBodyVisible(landmarks, CORE_LANDMARKS, 0.3)) {
         setState(s => ({ ...s, isBodyVisible: false, formIssues: ['Some body parts are not visible — adjust camera'] }));
         return;
       }

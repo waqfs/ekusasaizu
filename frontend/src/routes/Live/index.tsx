@@ -99,13 +99,16 @@ export function Live() {
     }
   }, [camera.isActive, pose.isReady]);
 
-  // Add form feedback to chat
+  // Add form feedback to chat (debounced — max one message every 3s)
   const lastIssueRef = useRef('');
+  const lastIssueTimeRef = useRef(0);
   useEffect(() => {
     if (workout.formIssues.length > 0 && workout.isBodyVisible) {
       const issue = workout.formIssues[0];
-      if (issue !== lastIssueRef.current) {
+      const now = Date.now();
+      if (issue !== lastIssueRef.current && now - lastIssueTimeRef.current > 3000) {
         lastIssueRef.current = issue;
+        lastIssueTimeRef.current = now;
         setMessages(prev => [...prev, { from: 'agent', text: issue }]);
       }
     }
