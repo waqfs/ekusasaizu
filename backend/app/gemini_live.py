@@ -66,9 +66,7 @@ class GeminiLiveSession:
             system_instruction=self.system_instruction,
             speech_config=types.SpeechConfig(
                 voice_config=types.VoiceConfig(
-                    prebuilt_voice_config=types.PrebuiltVoiceConfig(
-                        voice_name="Kore"
-                    )
+                    prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
                 )
             ),
         )
@@ -130,14 +128,19 @@ class GeminiLiveSession:
             await self.on_error(f"send_text_failed: {exc}")
 
     async def send_audio(self, pcm16_bytes: bytes):
-        """Send audio chunk directly to Gemini. No filtering — send everything."""
+        """Send audio chunk to Gemini using send_realtime_input."""
         if not self.session or not pcm16_bytes:
             return
         if len(pcm16_bytes) % 2 != 0:
             return
         try:
-            await self.session.send(
-                input={"data": pcm16_bytes, "mime_type": "audio/pcm"}
+            from google.genai import types
+
+            await self.session.send_realtime_input(
+                audio=types.Blob(
+                    data=pcm16_bytes,
+                    mime_type="audio/pcm;rate=16000",
+                )
             )
         except Exception as exc:
             logger.exception("send_audio failed")
