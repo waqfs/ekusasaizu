@@ -127,10 +127,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
 
   const sendAudioChunk = useCallback((pcmB64: string, sampleRate: number = 16000) => {
     const ws = wsRef.current;
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      console.debug('[coaching] sendAudioChunk: WS not open, state=', ws?.readyState);
-      return;
-    }
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
     ws.send(
       JSON.stringify({
         type: 'audio_chunk',

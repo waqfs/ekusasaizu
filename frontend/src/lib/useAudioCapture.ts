@@ -18,7 +18,7 @@ interface AudioCaptureState {
  * The noise gate is only used for the UI speaking indicator.
  */
 export function useAudioCapture(options: AudioCaptureOptions = {}) {
-  const { noiseGateThreshold = 0.02, chunkIntervalMs = 500 } = options;
+  const { noiseGateThreshold = 0.02, chunkIntervalMs = 250 } = options;
 
   const [state, setState] = useState<AudioCaptureState>({
     isCapturing: false,
@@ -81,7 +81,6 @@ export function useAudioCapture(options: AudioCaptureOptions = {}) {
             // Downsample from native rate to 16kHz for Gemini
             const downsampled = downsample(allSamples, nativeSampleRate, 16000);
             const b64 = float32ToBase64PCM(downsampled);
-            console.debug(`[audio] sending chunk: ${b64.length} chars, ${downsampled.length} samples`);
             onChunkRef.current?.(b64);
           }
         }, chunkIntervalMs);
@@ -154,7 +153,12 @@ function downsample(samples: Float32Array, fromRate: number, toRate: number): Fl
   const newLength = Math.round(samples.length / ratio);
   const result = new Float32Array(newLength);
   for (let i = 0; i < newLength; i++) {
-    result[i] = samples[Math.round(i * ratio)];
+    // Linear interpolation for better quality
+    const srcIdx = i * ratio;
+    const idx0 = Math.floor(srcIdx);
+    const idx1 = Math.min(idx0 + 1, samples.length - 1);
+    const frac = srcIdx - idx0;
+    result[i] = samples[idx0] * (1 - frac) + samples[idx1] * frac;
   }
   return result;
 }
