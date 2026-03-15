@@ -6,6 +6,9 @@ import { Login } from '@route/Login/index.tsx';
 import { Progress } from '@route/Progress/index.tsx';
 import { Exercise } from '@route/Exercise/index.tsx';
 import { Live } from '@route/Live/index.tsx';
+import { Demo } from '@route/Demo/index.tsx';
+import { RawDemo } from '@route/RawDemo/index.tsx';
+import { TwoPassDemo } from '@route/TwoPassDemo/index.tsx';
 import { Settings } from '@route/Settings/index.tsx';
 import { NotFound } from '@route/_404.tsx';
 import './style.css';
@@ -19,6 +22,9 @@ export function App() {
         <Route path="/progress" component={Progress} />
         <Route path="/exercise" component={Exercise} />
         <Route path="/live" component={Live} />
+        <Route path="/demo" component={Demo} />
+        <Route path="/raw-demo" component={RawDemo} />
+        <Route path="/two-pass" component={TwoPassDemo} />
         <Route path="/settings" component={Settings} />
         <Route default component={NotFound} />
       </Router>

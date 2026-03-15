@@ -5,30 +5,23 @@ export interface NormalizedLandmark {
   visibility?: number;
 }
 
-export type FormEvent =
-  | { type: 'rep_started' }
-  | { type: 'rep_completed'; score: number }
-  | { type: 'depth_too_shallow' }
-  | { type: 'knees_caving' }
-  | { type: 'hips_dropping' }
-  | { type: 'hips_sagging' }
-  | { type: 'back_arching' }
-  | { type: 'hold_started' }
-  | { type: 'hold_completed'; duration: number }
-  | { type: 'good_form' }
-  | { type: 'body_not_visible' }
-  | { type: 'framing_issue'; message: string };
-
-export type ExerciseType = 'pushups' | 'squats' | 'plank' | 'lunges' | 'burpees';
+export interface FormEvent {
+  type: string;
+  score?: number;
+  duration?: number;
+  message?: string;
+}
 
 export interface WorkoutState {
   repCount: number;
-  currentPhase: 'idle' | 'descending' | 'bottom' | 'ascending' | 'top' | 'holding';
+  currentPhase: string;
   formIssues: string[];
   currentScore: number;
   isBodyVisible: boolean;
   holdDuration: number;
   events: FormEvent[];
+  angleValues: Record<string, number>;
+  repCycleIndex: number;
 }
 
 export interface PoseWorkerMessage {

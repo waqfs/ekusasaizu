@@ -1,0 +1,221 @@
+{
+  "id": "lat_pull_down",
+  "name": "Lat Pull Down",
+  "type": "rep",
+  "description": "Seated cable exercise targeting the latissimus dorsi, engaging biceps and upper back.",
+  "camera_angle": "front",
+  "required_landmarks": {
+    "left": [
+      11,
+      13,
+      15
+    ],
+    "right": [
+      12,
+      14,
+      16
+    ],
+    "upper": [
+      23,
+      24
+    ]
+  },
+  "angles": {
+    "elbow": {
+      "description": "Elbow flexion — primary phase driver",
+      "left": [
+        11,
+        13,
+        15
+      ],
+      "right": [
+        12,
+        14,
+        16
+      ],
+      "average": true
+    },
+    "shoulder": {
+      "description": "Shoulder angle — arm overhead extension",
+      "left": [
+        13,
+        11,
+        23
+      ],
+      "right": [
+        14,
+        12,
+        24
+      ],
+      "average": true
+    },
+    "torso_lean": {
+      "description": "Shoulder-hip vertical alignment — backward lean detector",
+      "left": [
+        11,
+        23,
+        25
+      ],
+      "right": [
+        12,
+        24,
+        26
+      ],
+      "average": true
+    }
+  },
+  "phases": {
+    "top": {
+      "description": "Arms extended overhead, holding the bar",
+      "condition": {
+        "angle": "shoulder",
+        "above": 140
+      },
+      "exit": {
+        "angle": "shoulder",
+        "below": 130
+      }
+    },
+    "descending": {
+      "description": "Pulling the bar down toward chest",
+      "condition": {
+        "angle": "shoulder",
+        "below": 130
+      },
+      "exit": {
+        "angle": "shoulder",
+        "below": 60
+      }
+    },
+    "bottom": {
+      "description": "Bar at chest level — full contraction",
+      "condition": {
+        "angle": "shoulder",
+        "below": 60
+      },
+      "exit": {
+        "angle": "shoulder",
+        "above": 70
+      }
+    },
+    "ascending": {
+      "description": "Releasing the bar back up with control",
+      "condition": {
+        "angle": "shoulder",
+        "above": 70
+      },
+      "exit": {
+        "angle": "shoulder",
+        "above": 140
+      }
+    }
+  },
+  "phase_order": [
+    "top",
+    "descending",
+    "bottom",
+    "ascending"
+  ],
+  "rep_cycle": [
+    "top",
+    "descending",
+    "bottom",
+    "ascending",
+    "top"
+  ],
+  "form_checks": [
+    {
+      "id": "lean_back",
+      "name": "Excessive Lean",
+      "type": "angle_range",
+      "description": "Torso should stay mostly upright — slight lean is OK",
+      "angle": "torso_lean",
+      "good_min": 160,
+      "good_max": 195,
+      "warn_below": 150,
+      "warn_above": 200,
+      "severity": "warning",
+      "event_type": "leaning_back",
+      "message": "Don't lean too far back — use your lats, not momentum"
+    },
+    {
+      "id": "full_extension",
+      "name": "Full Extension",
+      "type": "angle_threshold",
+      "description": "Arms should fully extend at top for full range of motion",
+      "angle": "elbow",
+      "phase": "top",
+      "good_above": 155,
+      "warn_below": 140,
+      "severity": "info",
+      "event_type": "incomplete_extension",
+      "message": "Extend your arms fully at the top for full range of motion"
+    },
+    {
+      "id": "symmetry",
+      "name": "Pull Symmetry",
+      "type": "angle_symmetry",
+      "description": "Both arms should pull evenly",
+      "angle": "elbow",
+      "max_diff": 15,
+      "warn_diff": 20,
+      "severity": "info",
+      "event_type": "asymmetric_pull",
+      "message": "Pull evenly on both sides — one arm is doing more work"
+    },
+    {
+      "id": "contraction",
+      "name": "Full Contraction",
+      "type": "angle_threshold",
+      "description": "Bar should come to chest level",
+      "angle": "elbow",
+      "phase": "bottom",
+      "good_below": 80,
+      "warn_above": 100,
+      "severity": "info",
+      "event_type": "depth_too_shallow",
+      "message": "Pull the bar all the way to your chest"
+    }
+  ],
+  "scoring": {
+    "components": [
+      {
+        "name": "range_of_motion",
+        "weight": 0.35,
+        "angle": "elbow",
+        "ideal_at_bottom": 70,
+        "ideal_at_top": 165,
+        "penalty_per_degree": 2
+      },
+      {
+        "name": "control",
+        "weight": 0.3,
+        "type": "tempo",
+        "ideal_phase_ratio": {
+          "descending": 0.4,
+          "ascending": 0.4,
+          "bottom": 0.1,
+          "top": 0.1
+        }
+      },
+      {
+        "name": "symmetry",
+        "weight": 0.2,
+        "form_check": "symmetry",
+        "penalty_multiplier": 5
+      },
+      {
+        "name": "posture",
+        "weight": 0.15,
+        "form_check": "lean_back",
+        "penalty_multiplier": 20
+      }
+    ]
+  },
+  "smoothing": {
+    "ema_alpha": 0.3,
+    "buffer_size": 15,
+    "min_dwell_ms": 150,
+    "velocity_threshold": 5
+  }
+}

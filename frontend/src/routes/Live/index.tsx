@@ -5,25 +5,13 @@ import { PoseOverlay } from '@component/PoseOverlay.jsx';
 import { useCameraSession } from '../../lib/useCameraSession';
 import { usePoseStream } from '../../lib/usePoseStream';
 import { useWorkoutFormState } from '../../lib/useWorkoutFormState';
-import type { ExerciseType } from '../../lib/types';
+import { fetchExerciseConfig } from '../../lib/api';
+import type { ExerciseConfig } from '../../lib/configAnalyzer';
 
 const mockMessages = [
   { from: 'agent', text: "Welcome! Enable your camera and I'll start tracking your form." },
   { from: 'agent', text: 'MediaPipe Pose Landmarker will detect 33 body keypoints in real time.' },
 ];
-
-function mapExerciseType(name: string): ExerciseType {
-  const map: Record<string, ExerciseType> = {
-    'push-ups': 'pushups',
-    'pushups': 'pushups',
-    'squats': 'squats',
-    'planks': 'plank',
-    'plank': 'plank',
-    'lunges': 'lunges',
-    'burpees': 'burpees',
-  };
-  return map[name.toLowerCase()] ?? 'pushups';
-}
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -33,13 +21,27 @@ function formatTime(seconds: number) {
 
 export function Live() {
   const { query } = useLocation();
-  const exerciseParam = query.exercise ?? 'push-ups';
-  const exerciseName = exerciseParam.charAt(0).toUpperCase() + exerciseParam.slice(1);
-  const exerciseType = mapExerciseType(exerciseParam);
+  const exerciseId = query.exercise ?? 'squat';
+
+  // Exercise config loaded from backend
+  const [config, setConfig] = useState<ExerciseConfig | null>(null);
+  const [configLoading, setConfigLoading] = useState(true);
+  const [configError, setConfigError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setConfigLoading(true);
+    setConfigError(null);
+    fetchExerciseConfig(exerciseId)
+      .then(setConfig)
+      .catch(err => setConfigError(err.message))
+      .finally(() => setConfigLoading(false));
+  }, [exerciseId]);
+
+  const exerciseName = config?.name ?? exerciseId.charAt(0).toUpperCase() + exerciseId.slice(1);
 
   const camera = useCameraSession();
   const pose = usePoseStream(camera.videoRef);
-  const workout = useWorkoutFormState(exerciseType);
+  const workout = useWorkoutFormState(config);
 
   const [micOn, setMicOn] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -48,6 +50,7 @@ export function Live() {
   const [videoSize, setVideoSize] = useState({ w: 1280, h: 720 });
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const containerRef = useRef<HTMLDivElement>(null);
+  const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Process landmarks through the workout analyzer
   useEffect(() => {
@@ -96,13 +99,16 @@ export function Live() {
     }
   }, [camera.isActive, pose.isReady]);
 
-  // Add form feedback to chat
+  // Add form feedback to chat (debounced — max one message every 3s)
   const lastIssueRef = useRef('');
+  const lastIssueTimeRef = useRef(0);
   useEffect(() => {
     if (workout.formIssues.length > 0 && workout.isBodyVisible) {
       const issue = workout.formIssues[0];
-      if (issue !== lastIssueRef.current) {
+      const now = Date.now();
+      if (issue !== lastIssueRef.current && now - lastIssueTimeRef.current > 3000) {
         lastIssueRef.current = issue;
+        lastIssueTimeRef.current = now;
         setMessages(prev => [...prev, { from: 'agent', text: issue }]);
       }
     }
@@ -117,6 +123,11 @@ export function Live() {
     }
   }, [workout.repCount]);
 
+  // Auto-scroll chat to bottom
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const handleSendMessage = (e: Event) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
@@ -129,7 +140,7 @@ export function Live() {
     camera.stop();
   };
 
-  const isHoldExercise = exerciseType === 'plank';
+  const isHoldExercise = config?.type === 'hold';
   const feedbackColor = workout.formIssues[0]?.startsWith('Good') ? 'text-emerald-400' : 'text-amber-400';
 
   return (
@@ -157,9 +168,9 @@ export function Live() {
         </div>
 
         {/* Main Content */}
-        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 min-h-0">
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-3 lg:grid-rows-1 gap-4 min-h-0">
           {/* Camera Feed */}
-          <div class="lg:col-span-2 flex flex-col gap-4">
+          <div class="lg:col-span-2 flex flex-col gap-4 min-h-0">
             <div ref={containerRef} class="flex-1 bg-stone-900 border border-stone-800 rounded-lg overflow-hidden relative min-h-100">
               {/* Hidden video element for camera feed */}
               <video
@@ -216,6 +227,33 @@ export function Live() {
                       <div class={`w-3 h-3 rounded-full ${workout.isBodyVisible ? 'bg-emerald-500' : 'bg-stone-600 animate-pulse'}`} />
                     </div>
                   )}
+
+                  {/* Phase indicator */}
+                  {pose.isReady && workout.isBodyVisible && config && (
+                    <div class="absolute bottom-4 left-4 bg-stone-950/80 backdrop-blur-sm border border-stone-700 rounded-lg px-3 py-2">
+                      <div class="flex items-center gap-1.5 mb-1">
+                        {config.phase_order.map((phase, i) => (
+                          <div key={phase} class="flex items-center gap-1.5">
+                            <span
+                              class={`px-2 py-0.5 rounded text-xs ${
+                                workout.currentPhase === phase ? 'bg-amber-500/30 text-amber-300 font-medium' : 'text-stone-500'
+                              }`}
+                            >
+                              {phase}
+                            </span>
+                            {i < config.phase_order.length - 1 && <span class="text-stone-600 text-xs">→</span>}
+                          </div>
+                        ))}
+                      </div>
+                      <div class="flex gap-2 text-xs text-stone-400">
+                        {Object.entries(workout.angleValues).map(([name, val]) => (
+                          <span key={name}>
+                            {name}: <span class="text-stone-300">{val}°</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -223,14 +261,25 @@ export function Live() {
               {!camera.isActive && (
                 <div class="absolute inset-0 flex items-center justify-center">
                   <div class="text-center">
-                    <svg class="w-16 h-16 mx-auto text-stone-700 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
-                      <path
-                        stroke-linecap="round"
-                        d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9.75a.75.75 0 00.75-.75V6a.75.75 0 00-.75-.75H4.5a.75.75 0 00-.75.75v12c0 .414.336.75.75.75z"
-                      />
-                    </svg>
-                    <p class="text-stone-500">Camera is off</p>
-                    <p class="text-stone-600 text-xs mt-1">Enable your camera to start pose detection</p>
+                    {configLoading && <p class="text-stone-400 text-sm mb-3">Loading exercise configuration…</p>}
+                    {configError && (
+                      <div class="mb-4">
+                        <p class="text-red-400 text-sm">Failed to load config: {configError}</p>
+                        <p class="text-stone-600 text-xs mt-1">Make sure the backend is running at localhost:8000</p>
+                      </div>
+                    )}
+                    {!configLoading && !configError && (
+                      <>
+                        <svg class="w-16 h-16 mx-auto text-stone-700 mb-3" fill="none" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor">
+                          <path
+                            stroke-linecap="round"
+                            d="M15.75 10.5l4.72-4.72a.75.75 0 011.28.53v11.38a.75.75 0 01-1.28.53l-4.72-4.72M4.5 18.75h9.75a.75.75 0 00.75-.75V6a.75.75 0 00-.75-.75H4.5a.75.75 0 00-.75.75v12c0 .414.336.75.75.75z"
+                          />
+                        </svg>
+                        <p class="text-stone-500">Camera is off</p>
+                        <p class="text-stone-600 text-xs mt-1">Enable your camera to start pose detection</p>
+                      </>
+                    )}
                     {camera.error && <p class="text-red-400 text-xs mt-2">{camera.error}</p>}
                   </div>
                 </div>
@@ -303,13 +352,13 @@ export function Live() {
           </div>
 
           {/* Agent Chat Panel */}
-          <div class="flex flex-col bg-stone-900/30 border border-stone-800/30 rounded-lg overflow-hidden">
+          <div class="flex flex-col min-h-0 bg-stone-900/30 border border-stone-800/30 rounded-lg overflow-hidden">
             <div class="px-4 py-3 border-b border-stone-800">
               <h3 class="text-xs font-medium tracking-wide text-stone-300">AI Coach</h3>
               <p class="text-xs text-stone-500">Real-time feedback and communication</p>
             </div>
 
-            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+            <div class="flex-1 overflow-y-auto p-4 space-y-3 max-h-[60vh]">
               {messages.map(msg => (
                 <div class={`flex ${msg.from === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
@@ -321,6 +370,7 @@ export function Live() {
                   </div>
                 </div>
               ))}
+              <div ref={chatEndRef} />
             </div>
 
             <form onSubmit={handleSendMessage} class="p-3 border-t border-stone-800">

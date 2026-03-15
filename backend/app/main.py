@@ -13,6 +13,7 @@ from .live_session import (
     websocket_session_handler,
 )
 from .gemini import build_gemini_request, send_to_gemini
+from .exercise_loader import list_exercises, get_exercise_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +42,21 @@ app.add_middleware(
 @app.get("/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/exercises")
+async def get_exercises():
+    """List all available exercises with summary info."""
+    return list_exercises()
+
+
+@app.get("/api/exercises/{exercise_id}/config")
+async def get_exercise(exercise_id: str):
+    """Get the full MediaPipe configuration for an exercise."""
+    config = get_exercise_config(exercise_id)
+    if not config:
+        return {"error": f"Exercise '{exercise_id}' not found"}
+    return config
 
 
 @app.post("/api/session/start", response_model=SessionStartResponse)

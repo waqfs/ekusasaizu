@@ -1,0 +1,218 @@
+{
+  "id": "straight_leg_raises",
+  "name": "Straight Leg Raises",
+  "type": "rep",
+  "description": "Core exercise performed lying on your back, raising straight legs to target lower abdominals and hip flexors.",
+  "camera_angle": "side",
+  "required_landmarks": {
+    "left": [
+      11,
+      23,
+      25,
+      27
+    ],
+    "right": [
+      12,
+      24,
+      26,
+      28
+    ]
+  },
+  "angles": {
+    "hip_flexion": {
+      "description": "Hip flexion angle — primary phase driver (how high legs are raised)",
+      "left": [
+        11,
+        23,
+        27
+      ],
+      "right": [
+        12,
+        24,
+        28
+      ],
+      "average": true
+    },
+    "knee_bend": {
+      "description": "Knee angle — should stay near 180° (straight legs)",
+      "left": [
+        23,
+        25,
+        27
+      ],
+      "right": [
+        24,
+        26,
+        28
+      ],
+      "average": true
+    },
+    "torso_hip_leg": {
+      "description": "Torso-to-leg angle for overall body position",
+      "left": [
+        11,
+        23,
+        25
+      ],
+      "right": [
+        12,
+        24,
+        26
+      ],
+      "average": true
+    }
+  },
+  "phases": {
+    "bottom": {
+      "description": "Legs resting near the floor (starting position)",
+      "condition": {
+        "angle": "hip_flexion",
+        "above": 145
+      },
+      "exit": {
+        "angle": "hip_flexion",
+        "below": 140
+      }
+    },
+    "raising": {
+      "description": "Lifting legs upward",
+      "condition": {
+        "angle": "hip_flexion",
+        "below": 140
+      },
+      "exit": {
+        "angle": "hip_flexion",
+        "below": 115
+      }
+    },
+    "top": {
+      "description": "Legs raised to ~90° or higher",
+      "condition": {
+        "angle": "hip_flexion",
+        "below": 115
+      },
+      "exit": {
+        "angle": "hip_flexion",
+        "above": 120
+      }
+    },
+    "lowering": {
+      "description": "Controlled descent back to starting position",
+      "condition": {
+        "angle": "hip_flexion",
+        "above": 120
+      },
+      "exit": {
+        "angle": "hip_flexion",
+        "above": 145
+      }
+    }
+  },
+  "phase_order": [
+    "bottom",
+    "raising",
+    "top",
+    "lowering"
+  ],
+  "rep_cycle": [
+    "bottom",
+    "raising",
+    "top",
+    "lowering",
+    "bottom"
+  ],
+  "form_checks": [
+    {
+      "id": "knee_straight",
+      "name": "Straight Legs",
+      "type": "angle_range",
+      "description": "Knees should stay nearly straight throughout the movement",
+      "angle": "knee_bend",
+      "good_min": 160,
+      "good_max": 185,
+      "warn_below": 145,
+      "warn_above": 190,
+      "severity": "warning",
+      "event_type": "knees_bending",
+      "message": "Keep your legs straight — don't bend at the knees"
+    },
+    {
+      "id": "controlled_descent",
+      "name": "Controlled Lowering",
+      "type": "velocity",
+      "description": "Legs should lower with control, not drop",
+      "angle": "hip_flexion",
+      "phase": "lowering",
+      "max_velocity": 120,
+      "severity": "warning",
+      "event_type": "dropping_legs",
+      "message": "Lower your legs slowly — don't let them drop"
+    },
+    {
+      "id": "raise_height",
+      "name": "Full Raise",
+      "type": "angle_threshold",
+      "description": "Legs should reach approximately 90° to the body",
+      "angle": "hip_flexion",
+      "phase": "top",
+      "good_below": 100,
+      "warn_above": 120,
+      "severity": "info",
+      "event_type": "depth_too_shallow",
+      "message": "Raise your legs higher — aim for 90° to your body"
+    },
+    {
+      "id": "lower_back",
+      "name": "Lower Back Position",
+      "type": "landmark_position",
+      "description": "Lower back should stay pressed against the floor",
+      "landmark_check": "hip_shoulder_alignment",
+      "reference_landmarks": [
+        11,
+        12,
+        23,
+        24
+      ],
+      "severity": "warning",
+      "event_type": "back_arching",
+      "message": "Press your lower back into the floor — don't let it arch"
+    }
+  ],
+  "scoring": {
+    "components": [
+      {
+        "name": "range_of_motion",
+        "weight": 0.3,
+        "angle": "hip_flexion",
+        "ideal_at_top": 90,
+        "penalty_per_degree": 2
+      },
+      {
+        "name": "leg_straightness",
+        "weight": 0.3,
+        "form_check": "knee_straight",
+        "ideal_angle": 175,
+        "penalty_per_degree": 3
+      },
+      {
+        "name": "control",
+        "weight": 0.25,
+        "form_check": "controlled_descent",
+        "penalty_multiplier": 15
+      },
+      {
+        "name": "symmetry",
+        "weight": 0.15,
+        "type": "angle_symmetry",
+        "angle": "hip_flexion",
+        "penalty_per_degree": 5
+      }
+    ]
+  },
+  "smoothing": {
+    "ema_alpha": 0.25,
+    "buffer_size": 15,
+    "min_dwell_ms": 200,
+    "velocity_threshold": 4
+  }
+}
