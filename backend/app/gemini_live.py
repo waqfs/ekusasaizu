@@ -1,7 +1,7 @@
 """Gemini Live API session manager.
 
 Uses the bidirectional streaming Live API for real-time audio conversation.
-Based on the official Google example: tmp-google-example.py
+Based on the official Google example.
 
 Model: gemini-2.5-flash-native-audio-preview-12-2025
 Audio input: 16kHz mono PCM16 LE
@@ -56,13 +56,11 @@ class GeminiLiveSession:
             await self.on_error(f"google-genai not installed: {exc}")
             raise
 
-        # Use v1beta API version as required by the official example
         self.client = genai.Client(
             api_key=self.api_key,
             http_options={"api_version": "v1beta"},
         )
 
-        # Build typed config matching the official example
         config = types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             system_instruction=self.system_instruction,
@@ -85,7 +83,6 @@ class GeminiLiveSession:
             self._run_session(config), name="gemini-live"
         )
 
-        # Wait for either ready or failed
         wait_ready = asyncio.create_task(self._ready_event.wait())
         wait_failed = asyncio.create_task(self._failed_event.wait())
         done, pending = await asyncio.wait(
@@ -133,18 +130,11 @@ class GeminiLiveSession:
             await self.on_error(f"send_text_failed: {exc}")
 
     async def send_audio(self, pcm16_bytes: bytes):
-        """Send audio chunk to Gemini Live session.
-
-        Uses session.send(input=dict) matching the official example pattern.
-        Audio format: PCM16 LE mono at 16kHz, mime_type="audio/pcm"
-        """
+        """Send audio chunk directly to Gemini. No filtering — send everything."""
         if not self.session or not pcm16_bytes:
             return
-
-        # Validate: must be even length (16-bit samples)
         if len(pcm16_bytes) % 2 != 0:
             return
-
         try:
             await self.session.send(
                 input={"data": pcm16_bytes, "mime_type": "audio/pcm"}
@@ -191,16 +181,14 @@ class GeminiLiveSession:
     async def _receive_loop(self):
         """Receive and dispatch responses from Gemini.
 
-        Matches the official example pattern: session.receive() returns
-        a turn iterator. We loop to handle multiple turns.
-        After each turn completes, the iterator ends and we restart.
+        session.receive() returns a turn iterator. We loop to handle
+        multiple turns — after each turn completes, we restart.
         """
         try:
             logger.info("Gemini receive loop started")
             while self._running and self.session:
                 turn = self.session.receive()
                 async for response in turn:
-                    # Direct attribute access matching the official example
                     if data := response.data:
                         await self.on_audio(data)
                     elif text := response.text:
