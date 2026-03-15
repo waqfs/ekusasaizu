@@ -80,9 +80,10 @@ class GeminiRequest(BaseModel):
 
 
 class GeminiResponse(BaseModel):
-    """Structured response from Gemini (mock for now)."""
+    """Structured response from Gemini."""
 
     session_id: str
     coaching_text: str
     suggestions: list[str] = []
+    commands: list[dict] = []  # e.g. [{"type": "start_exercise", "exercise_id": "squat"}]
     score_adjustment: float | None = None

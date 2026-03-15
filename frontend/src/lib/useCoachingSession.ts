@@ -3,6 +3,11 @@ import type { NormalizedLandmark, FormEvent, WorkoutState } from './types';
 
 const WS_URL = `ws://${window.location.hostname}:8000/ws/session`;
 
+interface ExerciseCommand {
+  type: string;
+  exercise_id: string;
+}
+
 interface SessionState {
   isConnected: boolean;
   sessionId: string | null;
@@ -16,9 +21,14 @@ interface UseCoachingSessionOptions {
   geminiApiKey?: string;
 }
 
+interface CoachingCallbacks {
+  onCoachMessage: (msg: string) => void;
+  onCommand?: (cmd: ExerciseCommand) => void;
+}
+
 /**
  * Hook for managing a WebSocket coaching session with the backend.
- * Batches pose data, form events, audio, and angle values to send periodically.
+ * Supports real-time coaching during exercise AND conversational chat.
  */
 export function useCoachingSession(options: UseCoachingSessionOptions) {
   const { exercise, batchIntervalMs = 3000, geminiApiKey } = options;
@@ -36,10 +46,18 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
   const latestWorkoutRef = useRef<WorkoutState | null>(null);
   const latestAngleValuesRef = useRef<Record<string, number>>({});
   const audioChunkRef = useRef<string | null>(null);
-  const onCoachMessageRef = useRef<((msg: string) => void) | null>(null);
+  const callbacksRef = useRef<CoachingCallbacks | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
-  const connect = useCallback((onCoachMessage: (msg: string) => void) => {
-    onCoachMessageRef.current = onCoachMessage;
+  const handleCommands = useCallback((commands: ExerciseCommand[]) => {
+    if (!commands || commands.length === 0) return;
+    for (const cmd of commands) {
+      callbacksRef.current?.onCommand?.(cmd);
+    }
+  }, []);
+
+  const connect = useCallback((callbacks: CoachingCallbacks) => {
+    callbacksRef.current = callbacks;
 
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
@@ -60,6 +78,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
       const data = JSON.parse(event.data);
 
       if (data.type === 'session_started') {
+        sessionIdRef.current = data.session_id;
         setState(s => ({ ...s, isConnected: true, sessionId: data.session_id }));
 
         // Start periodic batch sending
@@ -72,7 +91,11 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
           lastCoachMessage: data.text,
           batchCount: data.batch_number,
         }));
-        onCoachMessageRef.current?.(data.text);
+        if (data.text) callbacksRef.current?.onCoachMessage(data.text);
+        handleCommands(data.commands);
+      } else if (data.type === 'chat_response') {
+        if (data.text) callbacksRef.current?.onCoachMessage(data.text);
+        handleCommands(data.commands);
       }
     };
 
@@ -93,7 +116,14 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
       ws.send(JSON.stringify({ type: 'end' }));
       ws.close();
     }
+    sessionIdRef.current = null;
     setState({ isConnected: false, sessionId: null, lastCoachMessage: null, batchCount: 0 });
+  }, []);
+
+  const sendChat = useCallback((text: string) => {
+    const ws = wsRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'chat', text }));
   }, []);
 
   const addFormEvent = useCallback((event: FormEvent) => {
@@ -109,7 +139,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
   }, []);
 
   const setAudioChunk = useCallback((b64: string) => {
-    audioChunkRef.current = b64; // Overwrite — latest chunk wins
+    audioChunkRef.current = b64;
   }, []);
 
   const sendBatch = useCallback(() => {
@@ -120,10 +150,10 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
     if (!workout) return;
 
     const payload = {
-      session_id: state.sessionId || '',
+      session_id: sessionIdRef.current || '',
       exercise,
       timestamp: Date.now(),
-      pose_frames: [], // We send form events instead of raw frames
+      pose_frames: [],
       form_events: [...pendingEventsRef.current],
       workout_status: {
         exercise,
@@ -141,7 +171,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
     ws.send(JSON.stringify({ type: 'batch', payload }));
     pendingEventsRef.current = [];
     audioChunkRef.current = null;
-  }, [exercise, state.sessionId]);
+  }, [exercise]);
 
   useEffect(() => {
     return () => {
@@ -154,6 +184,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
     ...state,
     connect,
     disconnect,
+    sendChat,
     addFormEvent,
     updateWorkoutState,
     updateAngleValues,

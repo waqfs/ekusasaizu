@@ -8,7 +8,15 @@ from uuid import uuid4
 from fastapi import WebSocket, WebSocketDisconnect
 
 from .schemas import BatchPayload, SessionConfig, SessionStartResponse
-from .gemini import build_gemini_request, send_to_gemini, set_session_api_key, clear_session_api_key
+from .gemini import (
+    build_gemini_request,
+    send_to_gemini,
+    send_chat,
+    set_session_api_key,
+    clear_session_api_key,
+    init_session_history,
+    clear_session_history,
+)
 
 logger = logging.getLogger("ekusasaizu.session")
 
@@ -41,7 +49,7 @@ class LiveSession:
             "yes" if payload.audio_chunk_b64 else "no",
         )
 
-        # Build and send to Gemini (currently just logging)
+        # Build and send to Gemini
         gemini_request = build_gemini_request(payload)
         gemini_response = await send_to_gemini(gemini_request)
 
@@ -49,7 +57,18 @@ class LiveSession:
             "type": "coaching",
             "text": gemini_response.coaching_text,
             "suggestions": gemini_response.suggestions,
+            "commands": gemini_response.commands,
             "batch_number": self.batch_count,
+        }
+
+    async def handle_chat(self, text: str) -> dict:
+        """Process a user chat message."""
+        logger.info("CHAT [%s] user=%s", self.session_id, text[:80])
+        gemini_response = await send_chat(self.session_id, text)
+        return {
+            "type": "chat_response",
+            "text": gemini_response.coaching_text,
+            "commands": gemini_response.commands,
         }
 
 
@@ -66,6 +85,9 @@ def create_session(config: SessionConfig) -> SessionStartResponse:
     # Store user-provided API key if given
     if config.gemini_api_key:
         set_session_api_key(session_id, config.gemini_api_key)
+
+    # Initialize conversation history
+    init_session_history(session_id)
 
     logger.info(
         "SESSION CREATED [%s] exercise=%s interval=%dms api_key=%s",
@@ -88,8 +110,9 @@ def end_session(session_id: str) -> dict | None:
     if not session:
         return None
 
-    # Clean up session API key
+    # Clean up session API key and conversation history
     clear_session_api_key(session_id)
+    clear_session_history(session_id)
 
     duration = time.time() - session.started_at
     summary = {
@@ -152,6 +175,25 @@ async def websocket_session_handler(websocket: WebSocket):
                 payload.session_id = session_id
                 response = await session.handle_batch(payload)
                 await websocket.send_json(response)
+
+            elif msg_type == "chat":
+                if not session_id:
+                    await websocket.send_json(
+                        {"type": "error", "message": "No active session"}
+                    )
+                    continue
+
+                session = get_session(session_id)
+                if not session:
+                    await websocket.send_json(
+                        {"type": "error", "message": "Session not found"}
+                    )
+                    continue
+
+                user_text = data.get("text", "")
+                if user_text.strip():
+                    response = await session.handle_chat(user_text)
+                    await websocket.send_json(response)
 
             elif msg_type == "end":
                 if session_id:

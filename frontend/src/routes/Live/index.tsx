@@ -11,8 +11,7 @@ import { fetchExerciseConfig } from '../../lib/api';
 import type { ExerciseConfig } from '../../lib/configAnalyzer';
 
 const mockMessages = [
-  { from: 'agent', text: "Welcome! Enable your camera and I'll start tracking your form." },
-  { from: 'agent', text: 'MediaPipe Pose Landmarker will detect 33 body keypoints in real time.' },
+  { from: 'agent', text: "Hey! I'm Kora, your AI exercise coach. Enable your camera to start, or ask me about exercises!" },
 ];
 
 function formatTime(seconds: number) {
@@ -113,8 +112,16 @@ export function Live() {
         pose.initWorker();
       }
       // Connect to coaching session
-      coaching.connect((msg) => {
-        setMessages(prev => [...prev, { from: 'agent', text: msg }]);
+      coaching.connect({
+        onCoachMessage: (msg) => {
+          setMessages(prev => [...prev, { from: 'agent', text: msg }]);
+        },
+        onCommand: (cmd) => {
+          if (cmd.type === 'start_exercise' && cmd.exercise_id) {
+            // Switch exercise by navigating
+            window.location.href = `/live?exercise=${cmd.exercise_id}`;
+          }
+        },
       });
     }
   };
@@ -172,8 +179,14 @@ export function Live() {
   const handleSendMessage = (e: Event) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    setMessages([...messages, { from: 'user', text: chatInput }]);
+    const text = chatInput.trim();
+    setMessages(prev => [...prev, { from: 'user', text }]);
     setChatInput('');
+
+    // Send through WebSocket if connected
+    if (coaching.isConnected) {
+      coaching.sendChat(text);
+    }
   };
 
   const handleEndSession = () => {
