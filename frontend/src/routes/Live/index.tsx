@@ -169,13 +169,24 @@ export function Live() {
           }. Please give a brief correction.`,
         );
       } else if (event.type === 'tempo_change') {
-        const direction = event.message === 'speeding_up' ? 'speeding up' : 'slowing down';
+        const isSlowing = event.message === 'slowing_down';
+        const direction = isSlowing ? 'slowing down' : 'speeding up';
         const durationSec = ((event.duration ?? 0) / 1000).toFixed(1);
-        coaching.sendChat(
-          `[SYSTEM] Tempo change: user is ${direction}. Last rep took ${durationSec}s.${
-            repGoal > 0 ? ` Goal: ${repGoal} reps, currently at ${workout.repCount}.` : ''
-          }`,
-        );
+        let msg = `[SYSTEM] Tempo: user is ${direction} — last rep took ${durationSec}s.`;
+        if (repGoal > 0) {
+          const remaining = repGoal - workout.repCount;
+          if (isSlowing && remaining > 0 && remaining <= 3) {
+            msg += ` Only ${remaining} rep${remaining > 1 ? 's' : ''} to go — encourage them to push through!`;
+          } else if (remaining > 0) {
+            msg += ` ${workout.repCount}/${repGoal} reps done, ${remaining} remaining.`;
+          }
+        }
+        if (isSlowing) {
+          msg += ' Encourage them to maintain a consistent pace.';
+        } else {
+          msg += ' Remind them to keep control and not rush.';
+        }
+        coaching.sendChat(msg);
       }
     }
   }, [workout.events]);
