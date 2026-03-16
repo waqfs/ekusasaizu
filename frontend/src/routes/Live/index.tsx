@@ -151,7 +151,7 @@ export function Live() {
     }
   }, [workout.repCount, repGoal]);
 
-  // Forward form events to coaching session + alert Gemini on bad form
+  // Forward form events to coaching session + alert Gemini on bad form or tempo changes
   useEffect(() => {
     for (const event of workout.events) {
       coaching.addFormEvent(event);
@@ -160,6 +160,14 @@ export function Live() {
           `[SYSTEM] Bad form detected on rep ${workout.repCount} (score: ${event.score ?? 0}). Issues: ${
             event.message ?? 'unknown'
           }. Please give a brief correction.`,
+        );
+      } else if (event.type === 'tempo_change') {
+        const direction = event.message === 'speeding_up' ? 'speeding up' : 'slowing down';
+        const durationSec = ((event.duration ?? 0) / 1000).toFixed(1);
+        coaching.sendChat(
+          `[SYSTEM] Tempo change: user is ${direction}. Last rep took ${durationSec}s.${
+            repGoal > 0 ? ` Goal: ${repGoal} reps, currently at ${workout.repCount}.` : ''
+          }`,
         );
       }
     }
