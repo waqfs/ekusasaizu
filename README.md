@@ -1,6 +1,6 @@
 ## Ekusasaizu
 
-Ekusasaizu is a real-time AI exercise coaching application. A user performs exercises in front of their webcam while an AI coach (backed by Google Gemini) provides voice coaching with form corrections, rep counting, and motivational guidance in real-time.
+Ekusasaizu (エクササイズ - exercise) is a real-time AI exercise coaching application. A user performs exercises in front of their webcam while an AI coach (backed by Google Gemini) provides voice coaching with form corrections, rep counting, and motivational guidance in real-time.
 
 ### Architecture
 
@@ -16,7 +16,17 @@ Gemini is given access to tools that let it get real-time data such as the curre
 
 ### Deployment Steps
 
-> An auto deployment script for the backend (for MacOS/Linux) is available in [auto_deploy.sh](./auto_deploy.sh). Note that you must install `gcloud` beforehand.
+#### Automatic Backend Deployment
+
+There is an auto deployment script for the backend available (MacOS/Linux) available in [auto_depoy.sh](./auto_deploy.sh). Note that you must install `gcloud` beforehand.
+
+This script takes in your project ID, preferred backend name, and Gemini API Key, and automatically sets up and hosts the backend from this repository. Here is the usage:
+
+```md
+./auto_deploy.sh <PROJECT_ID> [BACKEND_NAME] [GEMINI_API_KEY]
+```
+
+#### Manual/Frontend Deployment
 
 1. Install the [`gcloud`](https://cloud.google.com/cli) and [`firebase`](https://firebase.google.com/docs/cli/) CLI tools (Firebase is an optional step in this process; our frontend can be hosted anywhere)
 2. Authenticate both tools:
@@ -71,7 +81,9 @@ git clone https://github.com/waqfs/ekusasaizu.git
 cd ekusasaizu
 ```
 
-8. Then upload the backend to Cloud Run:
+8. Update the `Dockerfile` to provide the `GEMINI_API_KEY` or provide an environment flag in the next step.
+
+9. Then upload the backend to Cloud Run:
 
 ```zsh
 gcloud builds submit backend \
@@ -82,6 +94,8 @@ gcloud run deploy maomao-backend \
  --region us-central1 \
  --platform managed \
  --allow-unauthenticated
+
+# You can provide `--set-env-vars "GEMINI_API_KEY=${GEMINI_KEY}"` on `gcloud run deploy` to set the API key without modifying the repository or risking committing your key.
 ```
 
 > These two commands can be ran again to update the backend after changes have been made.
