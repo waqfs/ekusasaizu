@@ -56,6 +56,7 @@ export function Live() {
   const [videoSize, setVideoSize] = useState({ w: 1280, h: 720 });
   const [repGoal, setRepGoal] = useState(0);
   const goalNotifiedRef = useRef(false);
+  const halfwayNotifiedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -143,9 +144,15 @@ export function Live() {
     coaching.updateAngleValues(workout.angleValues);
   }, [workout.repCount, workout.currentPhase, workout.formIssues, workout.isBodyVisible]);
 
-  // Detect rep goal reached and notify Gemini
+  // Detect rep goal milestones and notify Gemini
   useEffect(() => {
-    if (repGoal > 0 && workout.repCount >= repGoal && !goalNotifiedRef.current) {
+    if (repGoal <= 0) return;
+    const halfway = Math.ceil(repGoal / 2);
+    if (workout.repCount >= halfway && !halfwayNotifiedRef.current && !goalNotifiedRef.current) {
+      halfwayNotifiedRef.current = true;
+      coaching.sendChat(`[SYSTEM] User is halfway to their rep goal! ${workout.repCount}/${repGoal} reps completed.`);
+    }
+    if (workout.repCount >= repGoal && !goalNotifiedRef.current) {
       goalNotifiedRef.current = true;
       coaching.sendChat(`[SYSTEM] Rep goal of ${repGoal} has been reached! Current count: ${workout.repCount}.`);
     }
@@ -230,6 +237,7 @@ export function Live() {
         onSetRepGoal: count => {
           setRepGoal(count);
           goalNotifiedRef.current = false;
+          halfwayNotifiedRef.current = false;
           setMessages(prev => [...prev, { from: 'agent', text: `Rep goal set to ${count}` }]);
         },
         onInterrupted: () => {
