@@ -87,6 +87,34 @@ export class GeminiLiveSession {
                   description:
                     'Get detailed form analysis for the current exercise: per-rep scores, joint angles at key phases, recurring form issues, and trend data. Use this to give specific form improvement advice or when the user asks about their form.',
                 },
+                {
+                  name: 'set_rep_goal',
+                  description: 'Set a rep goal for the current exercise. Use when the user says something like "let\'s do 10 reps" or "I want to do 15 squats".',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      count: {
+                        type: Type.NUMBER,
+                        description: 'The target number of reps to complete.',
+                      },
+                    },
+                    required: ['count'],
+                  },
+                },
+                {
+                  name: 'increase_rep_goal',
+                  description: 'Increase the current rep goal by a given amount. Use when the user says "let\'s do another 10" or "add 5 more reps".',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      count: {
+                        type: Type.NUMBER,
+                        description: 'The number of additional reps to add to the current goal.',
+                      },
+                    },
+                    required: ['count'],
+                  },
+                },
               ],
             },
           ],

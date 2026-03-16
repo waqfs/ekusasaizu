@@ -54,6 +54,8 @@ export function Live() {
   const [messages, setMessages] = useState(mockMessages);
   const [elapsed, setElapsed] = useState(0);
   const [videoSize, setVideoSize] = useState({ w: 1280, h: 720 });
+  const [repGoal, setRepGoal] = useState(0);
+  const goalNotifiedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -141,6 +143,14 @@ export function Live() {
     coaching.updateAngleValues(workout.angleValues);
   }, [workout.repCount, workout.currentPhase, workout.formIssues, workout.isBodyVisible]);
 
+  // Detect rep goal reached and notify Gemini
+  useEffect(() => {
+    if (repGoal > 0 && workout.repCount >= repGoal && !goalNotifiedRef.current) {
+      goalNotifiedRef.current = true;
+      coaching.sendChat(`[SYSTEM] Rep goal of ${repGoal} has been reached! Current count: ${workout.repCount}.`);
+    }
+  }, [workout.repCount, repGoal]);
+
   // Forward form events to coaching session
   useEffect(() => {
     for (const event of workout.events) {
@@ -201,6 +211,11 @@ export function Live() {
             setConfig(exerciseConfig as ExerciseConfig);
           }
           setMessages(prev => [...prev, { from: 'agent', text: `Switching to ${exerciseConfig?.name || exerciseId}...` }]);
+        },
+        onSetRepGoal: (count) => {
+          setRepGoal(count);
+          goalNotifiedRef.current = false;
+          setMessages(prev => [...prev, { from: 'agent', text: `Rep goal set to ${count}` }]);
         },
         onInterrupted: () => {
           interruptAudio();
@@ -343,8 +358,10 @@ export function Live() {
                   {/* Rep counter (bottom center) */}
                   {!isHoldExercise && (
                     <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-stone-950/80 backdrop-blur-sm border border-stone-700 rounded-lg px-6 py-2 text-center">
-                      <p class="text-xs text-stone-400">Reps</p>
-                      <p class="text-3xl font-bold text-stone-100">{workout.repCount}</p>
+                      <p class="text-xs text-stone-400">{repGoal > 0 ? 'Goal' : 'Reps'}</p>
+                      <p class="text-3xl font-bold text-stone-100">
+                        {workout.repCount}{repGoal > 0 ? <span class="text-lg text-stone-400">/{repGoal}</span> : null}
+                      </p>
                     </div>
                   )}
 

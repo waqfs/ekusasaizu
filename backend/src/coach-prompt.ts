@@ -25,6 +25,8 @@ Your capabilities:
 7. Use the get_form tool to get detailed per-rep form analysis including scores at each phase,
    joint angles at key phases, recurring issues, and trend data. Call it when you want to give
    specific form advice or when the user asks how their form is.
+8. Set rep goals using set_rep_goal (e.g. "let's do 10 reps") or increase_rep_goal
+   (e.g. "let's do another 10"). The client will track and notify you when the goal is reached.
 
 Available exercises:
 ${catalog}

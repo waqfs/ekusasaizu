@@ -62,6 +62,7 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
       batchCount: 0,
       totalReps: 0,
       gemini: null,
+      repGoal: 0,
       telemetry: {
         repCount: 0,
         currentPhase: 'idle',
@@ -175,6 +176,22 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
               recurring_issues: recurringIssues,
               recent_reps: recentReps,
             };
+          }
+          if (name === 'set_rep_goal') {
+            const count = Math.max(1, Math.round(args.count ?? 10));
+            if (state) state.repGoal = count;
+            ws.send(JSON.stringify({ type: 'set_rep_goal', count }));
+            console.log(`Rep goal set to ${count} [${sessionId}]`);
+            return { success: true, rep_goal: count };
+          }
+          if (name === 'increase_rep_goal') {
+            const increase = Math.max(1, Math.round(args.count ?? 5));
+            const current = state?.repGoal ?? 0;
+            const newGoal = current + increase;
+            if (state) state.repGoal = newGoal;
+            ws.send(JSON.stringify({ type: 'set_rep_goal', count: newGoal }));
+            console.log(`Rep goal increased by ${increase} to ${newGoal} [${sessionId}]`);
+            return { success: true, rep_goal: newGoal, increased_by: increase };
           }
           return { error: `Unknown function: ${name}` };
         },
@@ -335,4 +352,5 @@ interface SessionState {
   totalReps: number;
   gemini: GeminiLiveSession | null;
   telemetry: WorkoutTelemetry;
+  repGoal: number;
 }

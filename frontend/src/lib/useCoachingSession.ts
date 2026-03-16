@@ -26,6 +26,7 @@ interface CoachingCallbacks {
   onAudioEnd?: () => void;
   onCommand?: (cmd: ExerciseCommand) => void;
   onSetExercise?: (exerciseId: string, config: any) => void;
+  onSetRepGoal?: (count: number) => void;
   onInterrupted?: () => void;
 }
 
@@ -96,6 +97,8 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
           callbacksRef.current?.onAudioEnd?.();
         } else if (data.type === 'set_exercise') {
           callbacksRef.current?.onSetExercise?.(data.exercise_id, data.config);
+        } else if (data.type === 'set_rep_goal') {
+          callbacksRef.current?.onSetRepGoal?.(data.count);
         } else if (data.type === 'interrupted') {
           callbacksRef.current?.onInterrupted?.();
         } else if (data.type === 'error') {
