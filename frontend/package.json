@@ -3,9 +3,9 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "vite build",
+		"build": "vite build && cp dist/index.html dist/404.html",
 		"preview": "vite preview",
-		"gh-deploy": "gh-pages -d dist"
+		"gh-deploy": "bun run build && gh-pages -d dist"
 	},
 	"dependencies": {
 		"@mediapipe/tasks-vision": "^0.10.32",

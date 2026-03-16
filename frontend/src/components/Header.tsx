@@ -1,4 +1,5 @@
 import { useLocation } from 'preact-iso';
+import { p } from '../lib/basePath';
 
 export function Header() {
   const { url } = useLocation();
@@ -6,10 +7,10 @@ export function Header() {
   return (
     <header>
       <nav>
-        <a href="/" class={url == '/' && 'active'}>
+        <a href={p('/')} class={url == p('/') && 'active'}>
           Home
         </a>
-        <a href="/404" class={url == '/404' && 'active'}>
+        <a href={p('/404')} class={url == p('/404') && 'active'}>
           404
         </a>
       </nav>

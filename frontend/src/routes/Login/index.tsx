@@ -1,5 +1,6 @@
 import { useState } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
+import { p } from '../../lib/basePath';
 
 export function Login() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -9,7 +10,7 @@ export function Login() {
 
   const handleSubmit = (e: Event) => {
     e.preventDefault();
-    route('/progress');
+    route(p('/progress'));
   };
 
   return (
@@ -17,7 +18,7 @@ export function Login() {
       <div class="w-full max-w-md">
         {/* Logo */}
         <div class="text-center mb-8">
-          <a href="/">
+          <a href={p('/')}>
             <span class="text-2xl font-light tracking-wide text-amber-400">エクササイズ</span>
           </a>
           <p class="text-stone-600 text-sm font-light mt-2">{isSignUp ? 'Create your account' : 'Welcome back'}</p>

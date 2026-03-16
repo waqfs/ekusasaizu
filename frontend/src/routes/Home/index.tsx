@@ -1,3 +1,5 @@
+import { p } from '../../lib/basePath';
+
 export function Home() {
   return (
     <div class="min-h-screen bg-stone-950 text-stone-300">
@@ -13,7 +15,7 @@ export function Home() {
               Process
             </a>
             <a
-              href="/login"
+              href={p('/login')}
               class="text-xs tracking-widest uppercase px-5 py-2 border border-amber-500/30 text-amber-400 hover:bg-amber-500/10 transition-colors"
             >
               Begin
@@ -38,7 +40,7 @@ export function Home() {
               An intelligent companion that observes your technique through your camera and guides you toward perfect form — quietly, precisely, every rep.
             </p>
             <div class="mt-10 flex items-center gap-6">
-              <a href="/login" class="text-xs tracking-widest uppercase px-8 py-3 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors">
+              <a href={p('/login')} class="text-xs tracking-widest uppercase px-8 py-3 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors">
                 Start Training
               </a>
               <a href="#features" class="text-xs tracking-widest uppercase text-stone-500 hover:text-stone-300 transition-colors">
@@ -131,7 +133,10 @@ export function Home() {
         <div class="max-w-7xl mx-auto">
           <h2 class="text-3xl font-extralight text-stone-200 mb-4">Begin your practice.</h2>
           <p class="text-sm font-light text-stone-500 mb-10 max-w-md">Join those improving their technique with mindful, AI-guided coaching.</p>
-          <a href="/login" class="inline-block text-xs tracking-widest uppercase px-10 py-4 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors">
+          <a
+            href={p('/login')}
+            class="inline-block text-xs tracking-widest uppercase px-10 py-4 bg-amber-600 hover:bg-amber-500 text-stone-950 transition-colors"
+          >
             Sign Up Free
           </a>
         </div>

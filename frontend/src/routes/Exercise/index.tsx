@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'preact/hooks';
 import { DashboardLayout } from '@component/DashboardLayout.jsx';
 import { fetchExercises, type ExerciseSummary } from '../../lib/api';
+import { p } from '../../lib/basePath';
 
 function difficultyBadge(type: string) {
   if (type === 'hold') return 'bg-amber-500/10 text-amber-400';
@@ -78,7 +79,7 @@ export function Exercise() {
             <p class="text-stone-400 text-sm leading-relaxed mb-6">{selected.description}</p>
 
             <a
-              href={`/live?exercise=${selected.id}`}
+              href={p(`/live?exercise=${selected.id}`)}
               class="inline-block px-6 py-3.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white font-semibold text-center transition-all shadow-md shadow-amber-900/20"
             >
               Start {selected.name}

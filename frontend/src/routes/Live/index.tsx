@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { DashboardLayout } from '@component/DashboardLayout.jsx';
 import { PoseOverlay } from '@component/PoseOverlay.jsx';
 import { useCameraSession } from '../../lib/useCameraSession';
+import { p } from '../../lib/basePath';
 import { usePoseStream } from '../../lib/usePoseStream';
 import { useWorkoutFormState } from '../../lib/useWorkoutFormState';
 import { useCoachingSession } from '../../lib/useCoachingSession';
@@ -498,7 +499,7 @@ export function Live() {
                   Mic {micOn ? 'On' : 'Off'}
                 </button>
                 <a
-                  href="/exercise"
+                  href={p('/exercise')}
                   onClick={handleEndSession}
                   class="flex items-center gap-2 px-4 py-2.5 text-sm font-light tracking-wide bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
                 >
