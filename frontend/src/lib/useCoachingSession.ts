@@ -26,6 +26,7 @@ interface CoachingCallbacks {
   onAudioEnd?: () => void;
   onCommand?: (cmd: ExerciseCommand) => void;
   onSetExercise?: (exerciseId: string, config: any) => void;
+  onSetRepGoal?: (count: number) => void;
   onInterrupted?: () => void;
 }
 
@@ -48,6 +49,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
   const latestWorkoutRef = useRef<WorkoutState | null>(null);
   const latestAngleValuesRef = useRef<Record<string, number>>({});
   const callbacksRef = useRef<CoachingCallbacks | null>(null);
+  const lastSentRepRef = useRef<number>(0);
   const sessionIdRef = useRef<string | null>(null);
 
   const connect = useCallback(
@@ -95,6 +97,8 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
           callbacksRef.current?.onAudioEnd?.();
         } else if (data.type === 'set_exercise') {
           callbacksRef.current?.onSetExercise?.(data.exercise_id, data.config);
+        } else if (data.type === 'set_rep_goal') {
+          callbacksRef.current?.onSetRepGoal?.(data.count);
         } else if (data.type === 'interrupted') {
           callbacksRef.current?.onInterrupted?.();
         } else if (data.type === 'error') {
@@ -162,6 +166,12 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
     const workout = latestWorkoutRef.current;
     if (!workout) return;
 
+    // Only send reps not yet sent
+    const newReps = (workout.repHistory ?? []).filter(r => r.repNumber > lastSentRepRef.current);
+    if (newReps.length > 0) {
+      lastSentRepRef.current = newReps[newReps.length - 1].repNumber;
+    }
+
     const payload = {
       session_id: sessionIdRef.current || '',
       exercise,
@@ -176,8 +186,10 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
         hold_duration: workout.holdDuration,
         is_body_visible: workout.isBodyVisible,
         form_issues: workout.formIssues,
+        missing_body_parts: workout.missingBodyParts,
       },
       angle_values: latestAngleValuesRef.current,
+      rep_history: newReps,
     };
 
     ws.send(JSON.stringify({ type: 'batch', payload }));

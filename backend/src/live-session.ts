@@ -62,6 +62,18 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
       batchCount: 0,
       totalReps: 0,
       gemini: null,
+      repGoal: 0,
+      telemetry: {
+        repCount: 0,
+        currentPhase: 'idle',
+        currentScore: 0,
+        holdDuration: 0,
+        isBodyVisible: false,
+        formIssues: [],
+        missingBodyParts: [],
+        repHistory: [],
+        currentAngles: {},
+      },
     };
     ws.data.session = state;
 
@@ -106,6 +118,80 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
             if (state) state.exercise = exerciseId;
             console.log(`Exercise switched to ${exerciseId} [${sessionId}]`);
             return { success: true, exercise_id: exerciseId };
+          }
+          if (name === 'get_rep_count') {
+            return { rep_count: state?.telemetry.repCount ?? 0 };
+          }
+          if (name === 'get_exercise') {
+            return { exercise: state?.exercise ?? 'unknown' };
+          }
+          if (name === 'is_person_in_view') {
+            const inView = state?.telemetry.isBodyVisible ?? false;
+            const missing = state?.telemetry.missingBodyParts ?? [];
+            if (inView) {
+              return { in_view: true };
+            }
+            return {
+              in_view: false,
+              missing_body_parts: missing,
+              message: missing.length > 0 ? `Person not fully in view. Missing: ${missing.join(', ')}.` : 'Person not in view of camera.',
+            };
+          }
+          if (name === 'get_checkpoint') {
+            return { phase: state?.telemetry.currentPhase ?? 'idle', score: state?.telemetry.currentScore ?? 0 };
+          }
+          if (name === 'get_form') {
+            const t = state?.telemetry;
+            if (!t) return { error: 'No telemetry available' };
+            const history = t.repHistory;
+            const recentReps = history.slice(-5);
+
+            const scores = history.map(r => r.score);
+            const avgScore = scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+            const recentAvg = recentReps.length ? Math.round(recentReps.reduce((a, b) => a + b.score, 0) / recentReps.length) : 0;
+
+            // Aggregate recurring issues
+            const issueCounts: Record<string, number> = {};
+            for (const rep of history) {
+              for (const issue of rep.formIssues) {
+                issueCounts[issue] = (issueCounts[issue] || 0) + 1;
+              }
+            }
+            const recurringIssues = Object.entries(issueCounts)
+              .filter(([, count]) => count >= 2)
+              .sort((a, b) => b[1] - a[1])
+              .map(([issue, count]) => ({
+                issue,
+                count,
+                frequency: `${Math.round((count / history.length) * 100)}%`,
+              }));
+
+            return {
+              total_reps: history.length,
+              overall_avg_score: avgScore,
+              recent_avg_score: recentAvg,
+              trend: recentAvg > avgScore + 3 ? 'improving' : recentAvg < avgScore - 3 ? 'declining' : 'stable',
+              current_angles: t.currentAngles,
+              current_phase: t.currentPhase,
+              recurring_issues: recurringIssues,
+              recent_reps: recentReps,
+            };
+          }
+          if (name === 'set_rep_goal') {
+            const count = Math.max(1, Math.round(args.count ?? 10));
+            if (state) state.repGoal = count;
+            ws.send(JSON.stringify({ type: 'set_rep_goal', count }));
+            console.log(`Rep goal set to ${count} [${sessionId}]`);
+            return { success: true, rep_goal: count };
+          }
+          if (name === 'increase_rep_goal') {
+            const increase = Math.max(1, Math.round(args.count ?? 5));
+            const current = state?.repGoal ?? 0;
+            const newGoal = current + increase;
+            if (state) state.repGoal = newGoal;
+            ws.send(JSON.stringify({ type: 'set_rep_goal', count: newGoal }));
+            console.log(`Rep goal increased by ${increase} to ${newGoal} [${sessionId}]`);
+            return { success: true, rep_goal: newGoal, increased_by: increase };
           }
           return { error: `Unknown function: ${name}` };
         },
@@ -166,8 +252,27 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
     if (!state) return;
     const payload = data.payload ?? {};
     state.batchCount++;
-    const repCount = payload.workout_status?.rep_count ?? 0;
+    const ws_status = payload.workout_status ?? {};
+    const repCount = ws_status.rep_count ?? 0;
     state.totalReps = Math.max(state.totalReps, repCount);
+
+    // Append new rep snapshots (cap at 50)
+    const newReps: RepSnapshot[] = payload.rep_history ?? [];
+    const existingHistory = state.telemetry.repHistory;
+    const combinedHistory = [...existingHistory, ...newReps].slice(-50);
+
+    // Update telemetry for getter tools
+    state.telemetry = {
+      repCount,
+      currentPhase: ws_status.current_phase ?? 'idle',
+      currentScore: ws_status.current_score ?? 0,
+      holdDuration: ws_status.hold_duration ?? 0,
+      isBodyVisible: ws_status.is_body_visible ?? false,
+      formIssues: ws_status.form_issues ?? [],
+      missingBodyParts: ws_status.missing_body_parts ?? [],
+      repHistory: combinedHistory,
+      currentAngles: payload.angle_values ?? state.telemetry.currentAngles,
+    };
 
     if (state.gemini && (payload.form_events?.length || payload.angle_values)) {
       const context = buildCoachingPrompt({
@@ -218,6 +323,26 @@ export async function handleWebSocketClose(ws: ServerWebSocket<{ session: Sessio
   ws.data.session = null;
 }
 
+interface RepSnapshot {
+  repNumber: number;
+  score: number;
+  phaseAngles: Record<string, Record<string, number>>;
+  formIssues: string[];
+  durationMs: number;
+}
+
+interface WorkoutTelemetry {
+  repCount: number;
+  currentPhase: string;
+  currentScore: number;
+  holdDuration: number;
+  isBodyVisible: boolean;
+  formIssues: string[];
+  missingBodyParts: string[];
+  repHistory: RepSnapshot[];
+  currentAngles: Record<string, number>;
+}
+
 interface SessionState {
   sessionId: string;
   exercise: string;
@@ -226,4 +351,6 @@ interface SessionState {
   batchCount: number;
   totalReps: number;
   gemini: GeminiLiveSession | null;
+  telemetry: WorkoutTelemetry;
+  repGoal: number;
 }

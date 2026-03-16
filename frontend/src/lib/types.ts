@@ -12,6 +12,14 @@ export interface FormEvent {
   message?: string;
 }
 
+export interface RepSnapshot {
+  repNumber: number;
+  score: number;
+  phaseAngles: Record<string, Record<string, number>>; // phase → angle_name → value
+  formIssues: string[];
+  durationMs: number;
+}
+
 export interface WorkoutState {
   repCount: number;
   currentPhase: string;
@@ -22,6 +30,8 @@ export interface WorkoutState {
   events: FormEvent[];
   angleValues: Record<string, number>;
   repCycleIndex: number;
+  missingBodyParts: string[];
+  repHistory: RepSnapshot[];
 }
 
 export interface PoseWorkerMessage {

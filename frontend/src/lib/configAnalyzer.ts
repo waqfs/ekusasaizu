@@ -159,6 +159,8 @@ interface SideState {
   currentPhase: string;
   phaseEnteredAt: number;
   repPhaseIndex: number;
+  /** Track min/max angle values during the current rep cycle for accurate scoring */
+  repAngleExtremes: Map<string, { min: number; max: number }>;
 }
 
 // --- Config-Driven Analyzer ---
@@ -186,7 +188,7 @@ export class ConfigDrivenAnalyzer {
     for (const name of Object.keys(this.config.angles)) {
       angleBuffers.set(name, new AngleBuffer(this.config.smoothing.ema_alpha, this.config.smoothing.buffer_size));
     }
-    return { angleBuffers, currentPhase: startPhase, phaseEnteredAt: 0, repPhaseIndex: 0 };
+    return { angleBuffers, currentPhase: startPhase, phaseEnteredAt: 0, repPhaseIndex: 0, repAngleExtremes: new Map() };
   }
 
   get repCount(): number {
@@ -236,12 +238,14 @@ export class ConfigDrivenAnalyzer {
 
       // Update phase machines for each side
       for (const side of this.sides) {
+        this.updateAngleExtremes(side);
         const phaseEvent = this.updatePhase(now, side);
         if (phaseEvent) events.push(phaseEvent);
       }
     } else {
       // Standard averaged angles
       this.computeAnglesAveraged(landmarks, this.sides[0]);
+      this.updateAngleExtremes(this.sides[0]);
       const phaseEvent = this.updatePhase(now, this.sides[0]);
       if (phaseEvent) events.push(phaseEvent);
     }
@@ -312,6 +316,7 @@ export class ConfigDrivenAnalyzer {
         side.repPhaseIndex = 0;
         this._repCount++;
         this._lastRepScore = this.computeRepScore();
+        side.repAngleExtremes.clear();
         return { type: 'rep_completed', score: this._lastRepScore };
       }
     } else {
@@ -333,6 +338,20 @@ export class ConfigDrivenAnalyzer {
     if (condition.direction === 'decreasing' && !buffer.isDecreasing) return false;
 
     return true;
+  }
+
+  /** Track min/max angle values during the current rep cycle */
+  private updateAngleExtremes(side: SideState): void {
+    for (const [name, buffer] of side.angleBuffers) {
+      const val = buffer.value;
+      const ext = side.repAngleExtremes.get(name);
+      if (ext) {
+        ext.min = Math.min(ext.min, val);
+        ext.max = Math.max(ext.max, val);
+      } else {
+        side.repAngleExtremes.set(name, { min: val, max: val });
+      }
+    }
   }
 
   private runFormChecks(): FormEvent[] {
@@ -429,17 +448,32 @@ export class ConfigDrivenAnalyzer {
   private computeRepScore(): number {
     let totalScore = 0;
     let totalWeight = 0;
+    const extremes = this.sides[0].repAngleExtremes;
 
     for (const component of this.config.scoring.components) {
       let score = 100;
 
       if (component.angle) {
-        const buffer = this.sides[0].angleBuffers.get(component.angle);
-        if (buffer) {
-          const val = buffer.value;
-          const ideal = component.ideal_at_bottom ?? component.ideal_at_top ?? component.ideal ?? val;
-          const penalty = Math.abs(val - ideal) * (component.penalty_per_degree ?? 2);
-          score = Math.max(0, 100 - penalty);
+        const ext = extremes.get(component.angle);
+        if (ext) {
+          // Use the angle extreme that corresponds to the ideal phase:
+          // ideal_at_bottom → use minimum angle observed during rep
+          // ideal_at_top → use maximum angle observed during rep
+          // ideal → use the extreme closest to ideal
+          if (component.ideal_at_bottom != null) {
+            const penalty = Math.abs(ext.min - component.ideal_at_bottom) * (component.penalty_per_degree ?? 2);
+            score = Math.max(0, 100 - penalty);
+          } else if (component.ideal_at_top != null) {
+            const penalty = Math.abs(ext.max - component.ideal_at_top) * (component.penalty_per_degree ?? 2);
+            score = Math.max(0, 100 - penalty);
+          } else if (component.ideal != null) {
+            // Use whichever extreme is closer to the ideal
+            const distMin = Math.abs(ext.min - component.ideal);
+            const distMax = Math.abs(ext.max - component.ideal);
+            const bestVal = distMin < distMax ? ext.min : ext.max;
+            const penalty = Math.abs(bestVal - component.ideal) * (component.penalty_per_degree ?? 2);
+            score = Math.max(0, 100 - penalty);
+          }
         }
       }
 
@@ -469,6 +503,7 @@ export class ConfigDrivenAnalyzer {
       side.repPhaseIndex = 0;
       side.currentPhase = startPhase;
       side.phaseEnteredAt = 0;
+      side.repAngleExtremes.clear();
     }
   }
 }
