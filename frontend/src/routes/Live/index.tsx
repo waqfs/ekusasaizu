@@ -20,9 +20,12 @@ function formatTime(seconds: number) {
 
 export function Live() {
   const { query } = useLocation();
-  const exerciseId = query.exercise ?? 'squat';
+  const initialExerciseId = query.exercise ?? 'squat';
 
-  // Exercise config loaded from backend
+  // Active exercise — can be changed by Gemini via set_exercise
+  const [activeExerciseId, setActiveExerciseId] = useState(initialExerciseId);
+
+  // Exercise config loaded from backend or pushed via Gemini
   const [config, setConfig] = useState<ExerciseConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -30,20 +33,20 @@ export function Live() {
   useEffect(() => {
     setConfigLoading(true);
     setConfigError(null);
-    fetchExerciseConfig(exerciseId)
+    fetchExerciseConfig(activeExerciseId)
       .then(setConfig)
       .catch(err => setConfigError(err.message))
       .finally(() => setConfigLoading(false));
-  }, [exerciseId]);
+  }, [activeExerciseId]);
 
-  const exerciseName = config?.name ?? exerciseId.charAt(0).toUpperCase() + exerciseId.slice(1);
+  const exerciseName = config?.name ?? activeExerciseId.charAt(0).toUpperCase() + activeExerciseId.slice(1);
 
   const camera = useCameraSession();
   const pose = usePoseStream(camera.videoRef);
   const workout = useWorkoutFormState(config);
 
   const geminiApiKey = typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') || '' : '';
-  const coaching = useCoachingSession({ exercise: exerciseId, geminiApiKey });
+  const coaching = useCoachingSession({ exercise: activeExerciseId, geminiApiKey });
   const audio = useAudioCapture();
 
   const [micOn, setMicOn] = useState(false);
@@ -157,8 +160,14 @@ export function Live() {
           playAudio(pcmB64);
         },
         onAudioEnd: () => {
-          // Clear queued audio when interrupted by user speech
           nextPlayTimeRef.current = 0;
+        },
+        onSetExercise: (exerciseId, exerciseConfig) => {
+          setActiveExerciseId(exerciseId);
+          if (exerciseConfig) {
+            setConfig(exerciseConfig as ExerciseConfig);
+          }
+          setMessages(prev => [...prev, { from: 'agent', text: `Switching to ${exerciseConfig?.name || exerciseId}...` }]);
         },
       }); // Auto-start microphone for Gemini Live audio
       audio.start(chunk => {

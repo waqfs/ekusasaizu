@@ -25,6 +25,7 @@ interface CoachingCallbacks {
   onAudioChunk?: (pcmB64: string, sampleRate: number) => void;
   onAudioEnd?: () => void;
   onCommand?: (cmd: ExerciseCommand) => void;
+  onSetExercise?: (exerciseId: string, config: any) => void;
 }
 
 /**
@@ -91,6 +92,8 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
           callbacksRef.current?.onAudioChunk?.(data.pcm16_b64, data.sample_rate_hz || 24000);
         } else if (data.type === 'agent_audio_end') {
           callbacksRef.current?.onAudioEnd?.();
+        } else if (data.type === 'set_exercise') {
+          callbacksRef.current?.onSetExercise?.(data.exercise_id, data.config);
         } else if (data.type === 'error') {
           console.error('Session error:', data.message);
         }

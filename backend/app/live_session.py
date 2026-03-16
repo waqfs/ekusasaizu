@@ -16,6 +16,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from .schemas import BatchPayload, SessionConfig, SessionStartResponse
 from .gemini_live import GeminiLiveSession
 from .coach_prompt import get_system_prompt, build_coaching_prompt
+from .exercise_loader import get_exercise_config
 
 logger = logging.getLogger("ekusasaizu.session")
 
@@ -79,6 +80,29 @@ async def websocket_session_handler(websocket: WebSocket):
         logger.error("Gemini error [%s]: %s", session_id, message)
         await ws_send({"type": "error", "message": message})
 
+    async def on_gemini_function_call(name: str, args: dict) -> dict:
+        """Handle Gemini function calls (tool use)."""
+        if name == "set_exercise":
+            exercise_id = args.get("exercise_id", "")
+            config = get_exercise_config(exercise_id)
+            if not config:
+                return {"error": f"Exercise '{exercise_id}' not found"}
+
+            # Send exercise change to client with full config
+            await ws_send(
+                {
+                    "type": "set_exercise",
+                    "exercise_id": exercise_id,
+                    "config": config,
+                }
+            )
+            nonlocal exercise
+            exercise = exercise_id
+            logger.info("Exercise switched to %s [%s]", exercise_id, session_id)
+            return {"success": True, "exercise_id": exercise_id}
+
+        return {"error": f"Unknown function: {name}"}
+
     try:
         while True:
             raw = await websocket.receive_text()
@@ -103,6 +127,7 @@ async def websocket_session_handler(websocket: WebSocket):
                         on_text=on_gemini_text,
                         on_audio=on_gemini_audio,
                         on_error=on_gemini_error,
+                        on_function_call=on_gemini_function_call,
                     )
                     try:
                         await gemini.connect()

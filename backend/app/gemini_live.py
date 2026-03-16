@@ -20,6 +20,33 @@ logger = logging.getLogger("ekusasaizu.gemini_live")
 LIVE_MODEL = "models/gemini-2.5-flash-native-audio-preview-12-2025"
 
 
+def _build_tools():
+    """Build Gemini function declarations for exercise control."""
+    from google.genai import types
+
+    set_exercise_fn = types.FunctionDeclaration(
+        name="set_exercise",
+        description=(
+            "Switch the client to a different exercise. "
+            "Call this when the user wants to change exercises or you want to "
+            "recommend a new exercise. The client's pose tracking will update "
+            "to detect the new exercise."
+        ),
+        parameters=types.Schema(
+            type="OBJECT",
+            properties={
+                "exercise_id": types.Schema(
+                    type="STRING",
+                    description="The exercise ID to switch to (e.g. 'squat', 'lat_pull_down').",
+                ),
+            },
+            required=["exercise_id"],
+        ),
+    )
+
+    return [types.Tool(function_declarations=[set_exercise_fn])]
+
+
 class GeminiLiveSession:
     """Manages a single Gemini Live API bidirectional streaming session."""
 
@@ -30,12 +57,14 @@ class GeminiLiveSession:
         on_text: Callable[[str], Awaitable[None]],
         on_audio: Callable[[bytes], Awaitable[None]],
         on_error: Callable[[str], Awaitable[None]],
+        on_function_call: Optional[Callable[[str, dict], Awaitable[dict]]] = None,
     ):
         self.api_key = api_key
         self.system_instruction = system_instruction
         self.on_text = on_text
         self.on_audio = on_audio
         self.on_error = on_error
+        self.on_function_call = on_function_call
 
         self.client = None
         self.session = None
@@ -69,6 +98,7 @@ class GeminiLiveSession:
                     prebuilt_voice_config=types.PrebuiltVoiceConfig(voice_name="Kore")
                 )
             ),
+            tools=_build_tools(),
         )
 
         self._running = True
@@ -186,16 +216,49 @@ class GeminiLiveSession:
 
         session.receive() returns a turn iterator. We loop to handle
         multiple turns — after each turn completes, we restart.
+        Handles audio, text, and function calls.
         """
+        from google.genai import types
+
         try:
             logger.info("Gemini receive loop started")
             while self._running and self.session:
                 turn = self.session.receive()
                 async for response in turn:
+                    # Handle audio data
                     if data := response.data:
                         await self.on_audio(data)
+                    # Handle text
                     elif text := response.text:
                         await self.on_text(text)
+
+                    # Handle function calls (tool use)
+                    if hasattr(response, "tool_call") and response.tool_call:
+                        for fc in response.tool_call.function_calls:
+                            logger.info(
+                                "Gemini function call: %s(%s)",
+                                fc.name,
+                                fc.args,
+                            )
+                            if self.on_function_call:
+                                result = await self.on_function_call(
+                                    fc.name, dict(fc.args) if fc.args else {}
+                                )
+                            else:
+                                result = {"error": "no handler"}
+
+                            # Send function response back to Gemini
+                            await self.session.send(
+                                input=types.LiveClientToolResponse(
+                                    function_responses=[
+                                        types.FunctionResponse(
+                                            name=fc.name,
+                                            response=result,
+                                        )
+                                    ]
+                                )
+                            )
+
                 logger.debug("Turn complete, waiting for next turn...")
             logger.info("Gemini receive loop exiting")
         except asyncio.CancelledError:
