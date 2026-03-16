@@ -56,6 +56,7 @@ export function Live() {
   const [videoSize, setVideoSize] = useState({ w: 1280, h: 720 });
   const [repGoal, setRepGoal] = useState(0);
   const goalNotifiedRef = useRef(false);
+  const halfwayNotifiedRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -143,15 +144,21 @@ export function Live() {
     coaching.updateAngleValues(workout.angleValues);
   }, [workout.repCount, workout.currentPhase, workout.formIssues, workout.isBodyVisible]);
 
-  // Detect rep goal reached and notify Gemini
+  // Detect rep goal milestones and notify Gemini
   useEffect(() => {
-    if (repGoal > 0 && workout.repCount >= repGoal && !goalNotifiedRef.current) {
+    if (repGoal <= 0) return;
+    const halfway = Math.ceil(repGoal / 2);
+    if (workout.repCount >= halfway && !halfwayNotifiedRef.current && !goalNotifiedRef.current) {
+      halfwayNotifiedRef.current = true;
+      coaching.sendChat(`[SYSTEM] User is halfway to their rep goal! ${workout.repCount}/${repGoal} reps completed.`);
+    }
+    if (workout.repCount >= repGoal && !goalNotifiedRef.current) {
       goalNotifiedRef.current = true;
       coaching.sendChat(`[SYSTEM] Rep goal of ${repGoal} has been reached! Current count: ${workout.repCount}.`);
     }
   }, [workout.repCount, repGoal]);
 
-  // Forward form events to coaching session + alert Gemini on bad form
+  // Forward form events to coaching session + alert Gemini on bad form or tempo changes
   useEffect(() => {
     for (const event of workout.events) {
       coaching.addFormEvent(event);
@@ -161,6 +168,25 @@ export function Live() {
             event.message ?? 'unknown'
           }. Please give a brief correction.`,
         );
+      } else if (event.type === 'tempo_change') {
+        const isSlowing = event.message === 'slowing_down';
+        const direction = isSlowing ? 'slowing down' : 'speeding up';
+        const durationSec = ((event.duration ?? 0) / 1000).toFixed(1);
+        let msg = `[SYSTEM] Tempo: user is ${direction} — last rep took ${durationSec}s.`;
+        if (repGoal > 0) {
+          const remaining = repGoal - workout.repCount;
+          if (isSlowing && remaining > 0 && remaining <= 3) {
+            msg += ` Only ${remaining} rep${remaining > 1 ? 's' : ''} to go — encourage them to push through!`;
+          } else if (remaining > 0) {
+            msg += ` ${workout.repCount}/${repGoal} reps done, ${remaining} remaining.`;
+          }
+        }
+        if (isSlowing) {
+          msg += ' Encourage them to maintain a consistent pace.';
+        } else {
+          msg += ' Remind them to keep control and not rush.';
+        }
+        coaching.sendChat(msg);
       }
     }
   }, [workout.events]);
@@ -222,6 +248,7 @@ export function Live() {
         onSetRepGoal: count => {
           setRepGoal(count);
           goalNotifiedRef.current = false;
+          halfwayNotifiedRef.current = false;
           setMessages(prev => [...prev, { from: 'agent', text: `Rep goal set to ${count}` }]);
         },
         onInterrupted: () => {

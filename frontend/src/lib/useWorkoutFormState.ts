@@ -150,6 +150,29 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
                 });
               }
 
+              // Tempo analysis: compare last 3 rep durations for speed trend
+              if (repHistory.length >= 3) {
+                const recent = repHistory.slice(-3);
+                const durations = recent.map(r => r.durationMs);
+                const avgDuration = durations.reduce((a, b) => a + b, 0) / durations.length;
+                const latest = snapshot.durationMs;
+                const pctChange = ((latest - avgDuration) / avgDuration) * 100;
+
+                if (pctChange < -30) {
+                  events.push({
+                    type: 'tempo_change',
+                    message: `speeding_up`,
+                    duration: latest,
+                  });
+                } else if (pctChange > 40) {
+                  events.push({
+                    type: 'tempo_change',
+                    message: `slowing_down`,
+                    duration: latest,
+                  });
+                }
+              }
+
               // Reset for next rep
               repPhaseAnglesRef.current = {};
               repIssuesRef.current = new Set();
