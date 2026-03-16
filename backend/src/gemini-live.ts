@@ -43,6 +43,7 @@ export class GeminiLiveSession {
         model: LIVE_MODEL,
         config: {
           responseModalities: [Modality.AUDIO],
+          speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Sulafat' } } },
           systemInstruction: this.systemInstruction,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
