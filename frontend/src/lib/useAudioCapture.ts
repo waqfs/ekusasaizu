@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 
+const INPUT_SAMPLE_RATE = 16000;
+const CHUNK_SAMPLES = 640; // 40ms of audio at 16kHz — matches Gemini's optimal chunk size
+
 interface AudioCaptureOptions {
   noiseGateThreshold?: number; // RMS threshold (0-1) for the speaking UI indicator
-  sampleRate?: number;
-  chunkIntervalMs?: number; // How often to flush and send audio (ms)
 }
 
 interface AudioCaptureState {
@@ -12,13 +13,52 @@ interface AudioCaptureState {
   volume: number;
 }
 
+function clamp(v: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function int16ToBase64(input: Int16Array): string {
+  const bytes = new Uint8Array(input.buffer, input.byteOffset, input.byteLength);
+  let binary = '';
+  const block = 0x8000;
+  for (let i = 0; i < bytes.length; i += block) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + block));
+  }
+  return btoa(binary);
+}
+
+function downsampleTo16k(input: Float32Array, sourceSampleRate: number): Float32Array {
+  if (sourceSampleRate === INPUT_SAMPLE_RATE) return input;
+  const ratio = sourceSampleRate / INPUT_SAMPLE_RATE;
+  const outputLength = Math.floor(input.length / ratio);
+  const output = new Float32Array(outputLength);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+  while (offsetResult < output.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+    let accumulator = 0;
+    let count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < input.length; i++) {
+      accumulator += input[i];
+      count++;
+    }
+    output[offsetResult] = accumulator / Math.max(1, count);
+    offsetResult++;
+    offsetBuffer = nextOffsetBuffer;
+  }
+  return output;
+}
+
 /**
  * Hook for capturing microphone audio and streaming PCM16 chunks.
- * Sends ALL captured audio for Gemini Live API compatibility.
- * The noise gate is only used for the UI speaking indicator.
+ *
+ * Matches the reference implementation's approach:
+ * - ScriptProcessor with 1024 buffer (~21ms callbacks at 48kHz)
+ * - Immediate sending of 640-sample Int16 chunks (40ms of audio)
+ * - No interval-based batching — minimal latency
  */
 export function useAudioCapture(options: AudioCaptureOptions = {}) {
-  const { noiseGateThreshold = 0.02, chunkIntervalMs = 250 } = options;
+  const { noiseGateThreshold = 0.02 } = options;
 
   const [state, setState] = useState<AudioCaptureState>({
     isCapturing: false,
@@ -28,88 +68,87 @@ export function useAudioCapture(options: AudioCaptureOptions = {}) {
 
   const streamRef = useRef<MediaStream | null>(null);
   const contextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
   const processorRef = useRef<ScriptProcessorNode | null>(null);
-  const chunksRef = useRef<Float32Array[]>([]);
-  const rafRef = useRef<number>(0);
+  const muteRef = useRef<GainNode | null>(null);
+  const pendingSamplesRef = useRef<number[]>([]);
   const onChunkRef = useRef<((b64: string) => void) | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
   const start = useCallback(
     async (onChunk: (b64Audio: string) => void) => {
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true },
+          audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
         });
         streamRef.current = stream;
         onChunkRef.current = onChunk;
+        pendingSamplesRef.current = [];
 
         const ctx = new AudioContext();
         contextRef.current = ctx;
-        // Ensure AudioContext is running (may be suspended after async getUserMedia)
         if (ctx.state === 'suspended') await ctx.resume();
         const nativeSampleRate = ctx.sampleRate;
 
         const source = ctx.createMediaStreamSource(stream);
-        const analyser = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        analyserRef.current = analyser;
-        source.connect(analyser);
 
-        // Use ScriptProcessor to capture PCM data
-        const processor = ctx.createScriptProcessor(4096, 1, 1);
+        // Small buffer (1024) for low-latency callbacks (~21ms at 48kHz)
+        const processor = ctx.createScriptProcessor(1024, 1, 1);
         processorRef.current = processor;
-        let isSpeaking = false;
+
+        // Mute gain node prevents feedback loop
+        const mute = ctx.createGain();
+        mute.gain.value = 0;
+        muteRef.current = mute;
 
         processor.onaudioprocess = e => {
           const data = e.inputBuffer.getChannelData(0);
-          const rms = Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
-          isSpeaking = rms > noiseGateThreshold;
 
-          // Always send audio — Gemini Live needs continuous stream for turn detection
-          chunksRef.current.push(new Float32Array(data));
+          // Calculate RMS for UI
+          let energy = 0;
+          for (let i = 0; i < data.length; i++) {
+            energy += data[i] * data[i];
+          }
+          const rms = Math.sqrt(energy / data.length);
+          const isSpeaking = rms > noiseGateThreshold;
+          setState({ isCapturing: true, isSpeaking, volume: clamp(rms * 8, 0, 1) });
+
+          // Downsample to 16kHz and accumulate
+          const downsampled = downsampleTo16k(data, nativeSampleRate);
+          const pending = pendingSamplesRef.current;
+          for (let i = 0; i < downsampled.length; i++) {
+            const s = clamp(downsampled[i], -1, 1);
+            pending.push(s < 0 ? s * 32768 : s * 32767);
+          }
+
+          // Send 640-sample chunks immediately — no batching delay
+          while (pending.length >= CHUNK_SAMPLES) {
+            const pcmChunk = Int16Array.from(pending.splice(0, CHUNK_SAMPLES));
+            onChunkRef.current?.(int16ToBase64(pcmChunk));
+          }
         };
 
         source.connect(processor);
-        processor.connect(ctx.destination);
-
-        // Periodically flush audio chunks
-        intervalRef.current = setInterval(() => {
-          if (chunksRef.current.length > 0) {
-            const allSamples = mergeChunks(chunksRef.current);
-            chunksRef.current = [];
-            // Downsample from native rate to 16kHz for Gemini
-            const downsampled = downsample(allSamples, nativeSampleRate, 16000);
-            const b64 = float32ToBase64PCM(downsampled);
-            onChunkRef.current?.(b64);
-          }
-        }, chunkIntervalMs);
-
-        // Volume meter via analyser
-        const dataArray = new Uint8Array(analyser.frequencyBinCount);
-        const updateVolume = () => {
-          analyser.getByteFrequencyData(dataArray);
-          const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length / 255;
-          setState({ isCapturing: true, isSpeaking, volume: avg });
-          rafRef.current = requestAnimationFrame(updateVolume);
-        };
-        updateVolume();
+        processor.connect(mute);
+        mute.connect(ctx.destination);
 
         setState({ isCapturing: true, isSpeaking: false, volume: 0 });
       } catch (err) {
         console.error('Mic capture failed:', err);
       }
     },
-    [noiseGateThreshold, chunkIntervalMs],
+    [noiseGateThreshold],
   );
 
   const stop = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     processorRef.current?.disconnect();
+    muteRef.current?.disconnect();
     contextRef.current?.close();
     streamRef.current?.getTracks().forEach(t => t.stop());
-    chunksRef.current = [];
+    pendingSamplesRef.current = [];
     setState({ isCapturing: false, isSpeaking: false, volume: 0 });
   }, []);
 
@@ -118,47 +157,4 @@ export function useAudioCapture(options: AudioCaptureOptions = {}) {
   }, [stop]);
 
   return { ...state, start, stop };
-}
-
-function mergeChunks(chunks: Float32Array[]): Float32Array {
-  const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
-  const result = new Float32Array(totalLength);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
-}
-
-function float32ToBase64PCM(samples: Float32Array): string {
-  // Convert float32 [-1,1] to int16 PCM
-  const buffer = new ArrayBuffer(samples.length * 2);
-  const view = new DataView(buffer);
-  for (let i = 0; i < samples.length; i++) {
-    const s = Math.max(-1, Math.min(1, samples[i]));
-    view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7fff, true);
-  }
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-function downsample(samples: Float32Array, fromRate: number, toRate: number): Float32Array {
-  if (fromRate === toRate) return samples;
-  const ratio = fromRate / toRate;
-  const newLength = Math.round(samples.length / ratio);
-  const result = new Float32Array(newLength);
-  for (let i = 0; i < newLength; i++) {
-    // Linear interpolation for better quality
-    const srcIdx = i * ratio;
-    const idx0 = Math.floor(srcIdx);
-    const idx1 = Math.min(idx0 + 1, samples.length - 1);
-    const frac = srcIdx - idx0;
-    result[i] = samples[idx0] * (1 - frac) + samples[idx1] * frac;
-  }
-  return result;
 }
