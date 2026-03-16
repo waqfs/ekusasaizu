@@ -68,6 +68,8 @@ class GeminiLiveSession:
 
         self.client = None
         self.session = None
+        self._config = None  # Store config for reconnection
+        self._reconnecting = False
         self._receive_task: Optional[asyncio.Task] = None
         self._live_task: Optional[asyncio.Task] = None
         self._stop_event = asyncio.Event()
@@ -100,6 +102,7 @@ class GeminiLiveSession:
             ),
             tools=_build_tools(),
         )
+        self._config = config
 
         self._running = True
         self._stop_event.clear()
@@ -148,6 +151,63 @@ class GeminiLiveSession:
         self.session = None
         logger.info("Gemini Live session closed")
 
+    async def _reconnect(self):
+        """Reconnect the Gemini Live session after a disconnect."""
+        if self._reconnecting or not self._running:
+            return
+        self._reconnecting = True
+        logger.info("Reconnecting Gemini Live session...")
+
+        # Clean up old session
+        if self._receive_task:
+            self._receive_task.cancel()
+            try:
+                await self._receive_task
+            except Exception:
+                pass
+            self._receive_task = None
+
+        if self._live_task:
+            self._live_task.cancel()
+            try:
+                await self._live_task
+            except Exception:
+                pass
+            self._live_task = None
+
+        self.session = None
+
+        # Reconnect with saved config
+        try:
+            self._stop_event.clear()
+            self._ready_event.clear()
+            self._failed_event.clear()
+            self._startup_error = None
+
+            self._live_task = asyncio.create_task(
+                self._run_session(self._config), name="gemini-live-reconnect"
+            )
+
+            wait_ready = asyncio.create_task(self._ready_event.wait())
+            wait_failed = asyncio.create_task(self._failed_event.wait())
+            done, pending = await asyncio.wait(
+                {wait_ready, wait_failed}, return_when=asyncio.FIRST_COMPLETED
+            )
+            for task in pending:
+                task.cancel()
+
+            if self._failed_event.is_set():
+                err = self._startup_error or "unknown error"
+                logger.error("Reconnect failed: %s", err)
+                await self.on_error(f"reconnect_failed: {err}")
+            else:
+                logger.info("Gemini Live session reconnected")
+        except Exception as exc:
+            logger.exception("Reconnect error")
+            await self.on_error(f"reconnect_error: {exc}")
+        finally:
+            self._reconnecting = False
+
     async def send_text(self, text: str):
         """Send a text message to Gemini."""
         if not self.session or not text.strip():
@@ -173,8 +233,13 @@ class GeminiLiveSession:
                 )
             )
         except Exception as exc:
-            logger.exception("send_audio failed")
-            await self.on_error(f"send_audio_failed: {exc}")
+            err_str = str(exc)
+            if "1011" in err_str or "ping timeout" in err_str or "close" in err_str.lower():
+                logger.warning("Gemini session disconnected, triggering reconnect")
+                asyncio.create_task(self._reconnect())
+            else:
+                logger.exception("send_audio failed")
+                await self.on_error(f"send_audio_failed: {exc}")
 
     async def send_grounding_context(self, context: dict):
         """Send workout telemetry context as grounding text."""
@@ -236,9 +301,10 @@ class GeminiLiveSession:
                     if hasattr(response, "tool_call") and response.tool_call:
                         for fc in response.tool_call.function_calls:
                             logger.info(
-                                "Gemini function call: %s(%s)",
+                                "Gemini function call: %s(%s) id=%s",
                                 fc.name,
                                 fc.args,
+                                getattr(fc, "id", None),
                             )
                             if self.on_function_call:
                                 result = await self.on_function_call(
@@ -247,11 +313,12 @@ class GeminiLiveSession:
                             else:
                                 result = {"error": "no handler"}
 
-                            # Send function response back to Gemini
+                            # Send function response back with the call ID
                             await self.session.send(
                                 input=types.LiveClientToolResponse(
                                     function_responses=[
                                         types.FunctionResponse(
+                                            id=fc.id,
                                             name=fc.name,
                                             response=result,
                                         )
@@ -265,5 +332,10 @@ class GeminiLiveSession:
             logger.info("Gemini receive loop cancelled")
             return
         except Exception as exc:
-            logger.exception("Gemini receive loop failed")
-            await self.on_error(f"receive_loop_failed: {exc}")
+            err_str = str(exc)
+            if "1011" in err_str or "ping timeout" in err_str or "close" in err_str.lower():
+                logger.warning("Receive loop: connection lost, triggering reconnect")
+                asyncio.create_task(self._reconnect())
+            else:
+                logger.exception("Gemini receive loop failed")
+                await self.on_error(f"receive_loop_failed: {exc}")
