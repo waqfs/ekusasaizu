@@ -141,8 +141,8 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
               repHistory = [...repHistory.slice(-9), snapshot]; // keep last 10
               lastSnapshotRepRef.current = repCount;
 
-              // Flag extremely bad form for proactive coaching (score < 40 or 3+ issues)
-              if (newScore < 40 || snapshot.formIssues.length >= 3) {
+              // Flag extremely bad form for proactive coaching (score < 50 or 2+ issues)
+              if (newScore < 50 || snapshot.formIssues.length >= 2) {
                 events.push({
                   type: 'bad_form_alert',
                   score: newScore,
