@@ -80,6 +80,31 @@ export function isBodyVisible(landmarks: NormalizedLandmark[], requiredIndices: 
   return requiredIndices.every(idx => landmarks[idx] && (landmarks[idx].visibility ?? 0) >= minVisibility);
 }
 
+/**
+ * Check if the detected pose is large enough to be a real person.
+ * Uses the shoulder-to-hip torso height as a proxy.
+ * Returns false when the pose is too small (likely a misdetection on an object).
+ * Landmarks are normalized 0-1, so a real person in frame should have
+ * a torso spanning at least ~10% of frame height.
+ */
+export function isPoseHumanSized(landmarks: NormalizedLandmark[], minTorsoHeight = 0.10): boolean {
+  const ls = landmarks[LANDMARK.LEFT_SHOULDER];
+  const rs = landmarks[LANDMARK.RIGHT_SHOULDER];
+  const lh = landmarks[LANDMARK.LEFT_HIP];
+  const rh = landmarks[LANDMARK.RIGHT_HIP];
+  if (!ls || !rs || !lh || !rh) return false;
+
+  // Average shoulder Y and average hip Y
+  const shoulderY = (ls.y + rs.y) / 2;
+  const hipY = (lh.y + rh.y) / 2;
+  const torsoHeight = Math.abs(hipY - shoulderY);
+
+  // Also check shoulder width — too narrow = not a person
+  const shoulderWidth = Math.abs(ls.x - rs.x);
+
+  return torsoHeight >= minTorsoHeight && shoulderWidth >= minTorsoHeight * 0.3;
+}
+
 /** Get midpoint between two landmarks */
 export function midpoint(a: NormalizedLandmark, b: NormalizedLandmark): NormalizedLandmark {
   return {

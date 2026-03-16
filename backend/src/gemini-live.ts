@@ -74,7 +74,7 @@ export class GeminiLiveSession {
                 },
                 {
                   name: 'is_person_in_view',
-                  description: 'Check whether the person is currently visible in the camera according to MediaPipe pose detection.',
+                  description: 'Check whether the person is currently visible in the camera for the active exercise. If not in view, returns which body regions are required.',
                 },
                 {
                   name: 'get_checkpoint',

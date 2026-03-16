@@ -122,7 +122,22 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
             return { exercise: state?.exercise ?? 'unknown' };
           }
           if (name === 'is_person_in_view') {
-            return { in_view: state?.telemetry.isBodyVisible ?? false };
+            const inView = state?.telemetry.isBodyVisible ?? false;
+            if (inView) {
+              return { in_view: true };
+            }
+            // When not in view, report required body regions from exercise config
+            const exConfig = await getExerciseConfig(state?.exercise ?? '');
+            const requiredRegions = exConfig?.required_landmarks
+              ? Object.keys(exConfig.required_landmarks)
+              : [];
+            return {
+              in_view: false,
+              required_regions: requiredRegions,
+              message: requiredRegions.length > 0
+                ? `Person not in view. Exercise requires: ${requiredRegions.join(', ')} body regions to be visible.`
+                : 'Person not in view of camera.',
+            };
           }
           if (name === 'get_checkpoint') {
             return { phase: state?.telemetry.currentPhase ?? 'idle', score: state?.telemetry.currentScore ?? 0 };

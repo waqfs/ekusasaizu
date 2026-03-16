@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useMemo } from 'preact/hooks';
 import type { NormalizedLandmark, FormEvent, WorkoutState } from './types';
 import { ConfigDrivenAnalyzer, type ExerciseConfig } from './configAnalyzer';
-import { isBodyVisible } from './landmarks';
+import { isBodyVisible, isPoseHumanSized } from './landmarks';
 
 const INITIAL_STATE: WorkoutState = {
   repCount: 0,
@@ -42,6 +42,12 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
     (landmarks: NormalizedLandmark[] | null) => {
       if (!analyzer || !landmarks || landmarks.length < 33) {
         setState(s => ({ ...s, isBodyVisible: false, formIssues: ['Position your full body in the camera frame'] }));
+        return;
+      }
+
+      // Size check — reject detections that are too small to be a real person
+      if (!isPoseHumanSized(landmarks)) {
+        setState(s => ({ ...s, isBodyVisible: false, formIssues: ['No person detected — step closer or adjust camera'] }));
         return;
       }
 
