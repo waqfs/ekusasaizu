@@ -69,6 +69,7 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
         holdDuration: 0,
         isBodyVisible: false,
         formIssues: [],
+        missingBodyParts: [],
       },
     };
     ws.data.session = state;
@@ -123,19 +124,15 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
           }
           if (name === 'is_person_in_view') {
             const inView = state?.telemetry.isBodyVisible ?? false;
+            const missing = state?.telemetry.missingBodyParts ?? [];
             if (inView) {
               return { in_view: true };
             }
-            // When not in view, report required body regions from exercise config
-            const exConfig = await getExerciseConfig(state?.exercise ?? '');
-            const requiredRegions = exConfig?.required_landmarks
-              ? Object.keys(exConfig.required_landmarks)
-              : [];
             return {
               in_view: false,
-              required_regions: requiredRegions,
-              message: requiredRegions.length > 0
-                ? `Person not in view. Exercise requires: ${requiredRegions.join(', ')} body regions to be visible.`
+              missing_body_parts: missing,
+              message: missing.length > 0
+                ? `Person not fully in view. Missing: ${missing.join(', ')}.`
                 : 'Person not in view of camera.',
             };
           }
@@ -213,6 +210,7 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
       holdDuration: ws_status.hold_duration ?? 0,
       isBodyVisible: ws_status.is_body_visible ?? false,
       formIssues: ws_status.form_issues ?? [],
+      missingBodyParts: ws_status.missing_body_parts ?? [],
     };
 
     if (state.gemini && (payload.form_events?.length || payload.angle_values)) {
@@ -271,6 +269,7 @@ interface WorkoutTelemetry {
   holdDuration: number;
   isBodyVisible: boolean;
   formIssues: string[];
+  missingBodyParts: string[];
 }
 
 interface SessionState {

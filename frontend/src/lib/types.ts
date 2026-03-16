@@ -22,6 +22,7 @@ export interface WorkoutState {
   events: FormEvent[];
   angleValues: Record<string, number>;
   repCycleIndex: number;
+  missingBodyParts: string[];
 }
 
 export interface PoseWorkerMessage {

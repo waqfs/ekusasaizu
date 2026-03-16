@@ -176,6 +176,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
         hold_duration: workout.holdDuration,
         is_body_visible: workout.isBodyVisible,
         form_issues: workout.formIssues,
+        missing_body_parts: workout.missingBodyParts,
       },
       angle_values: latestAngleValuesRef.current,
     };

@@ -3,6 +3,31 @@ import type { NormalizedLandmark, FormEvent, WorkoutState } from './types';
 import { ConfigDrivenAnalyzer, type ExerciseConfig } from './configAnalyzer';
 import { isBodyVisible, isPoseHumanSized } from './landmarks';
 
+// Landmark index to human-readable body part name
+const LANDMARK_NAMES: Record<number, string> = {
+  11: 'left shoulder', 12: 'right shoulder',
+  13: 'left elbow', 14: 'right elbow',
+  15: 'left wrist', 16: 'right wrist',
+  23: 'left hip', 24: 'right hip',
+  25: 'left knee', 26: 'right knee',
+  27: 'left ankle', 28: 'right ankle',
+};
+
+/** Check which required body part groups are not visible */
+function getMissingBodyParts(landmarks: NormalizedLandmark[], config: ExerciseConfig | null): string[] {
+  if (!config?.required_landmarks) return [];
+  const missing: string[] = [];
+  const rl = config.required_landmarks as Record<string, number[]>;
+  for (const [group, indices] of Object.entries(rl)) {
+    const invisible = indices.filter(idx => !landmarks[idx] || (landmarks[idx].visibility ?? 0) < 0.3);
+    if (invisible.length > 0) {
+      const parts = invisible.map(idx => LANDMARK_NAMES[idx] ?? `landmark ${idx}`);
+      missing.push(`${group} (${parts.join(', ')})`);
+    }
+  }
+  return missing;
+}
+
 const INITIAL_STATE: WorkoutState = {
   repCount: 0,
   currentPhase: 'idle',
@@ -13,6 +38,7 @@ const INITIAL_STATE: WorkoutState = {
   events: [],
   angleValues: {},
   repCycleIndex: 0,
+  missingBodyParts: [],
 };
 
 /**
@@ -41,20 +67,29 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
   const processLandmarks = useCallback(
     (landmarks: NormalizedLandmark[] | null) => {
       if (!analyzer || !landmarks || landmarks.length < 33) {
-        setState(s => ({ ...s, isBodyVisible: false, formIssues: ['Position your full body in the camera frame'] }));
+        setState(s => ({ ...s, isBodyVisible: false, missingBodyParts: ['full body'], formIssues: ['Position your full body in the camera frame'] }));
         return;
       }
 
       // Size check — reject detections that are too small to be a real person
       if (!isPoseHumanSized(landmarks)) {
-        setState(s => ({ ...s, isBodyVisible: false, formIssues: ['No person detected — step closer or adjust camera'] }));
+        setState(s => ({ ...s, isBodyVisible: false, missingBodyParts: ['full body'], formIssues: ['No person detected — step closer or adjust camera'] }));
         return;
       }
 
       // Body check — require shoulders + hips to be visible
       const CORE_LANDMARKS = [11, 12, 23, 24]; // shoulders, hips
       if (!isBodyVisible(landmarks, CORE_LANDMARKS, 0.3)) {
-        setState(s => ({ ...s, isBodyVisible: false, formIssues: ['Some body parts are not visible — adjust camera'] }));
+        // Determine which required landmark groups are missing
+        const missing = getMissingBodyParts(landmarks, config);
+        setState(s => ({ ...s, isBodyVisible: false, missingBodyParts: missing, formIssues: missing.length > 0 ? [`Not visible: ${missing.join(', ')}`] : ['Some body parts are not visible — adjust camera'] }));
+        return;
+      }
+
+      // Check exercise-specific required landmarks
+      const missing = getMissingBodyParts(landmarks, config);
+      if (missing.length > 0) {
+        setState(s => ({ ...s, isBodyVisible: false, missingBodyParts: missing, formIssues: [`Not visible: ${missing.join(', ')}`] }));
         return;
       }
 
@@ -98,6 +133,7 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
           formIssues: issues,
           currentScore: newScore || prev.currentScore,
           isBodyVisible: true,
+          missingBodyParts: [],
           holdDuration,
           events,
           angleValues,
