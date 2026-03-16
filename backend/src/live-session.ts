@@ -62,6 +62,14 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
       batchCount: 0,
       totalReps: 0,
       gemini: null,
+      telemetry: {
+        repCount: 0,
+        currentPhase: 'idle',
+        currentScore: 0,
+        holdDuration: 0,
+        isBodyVisible: false,
+        formIssues: [],
+      },
     };
     ws.data.session = state;
 
@@ -106,6 +114,18 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
             if (state) state.exercise = exerciseId;
             console.log(`Exercise switched to ${exerciseId} [${sessionId}]`);
             return { success: true, exercise_id: exerciseId };
+          }
+          if (name === 'get_rep_count') {
+            return { rep_count: state?.telemetry.repCount ?? 0 };
+          }
+          if (name === 'get_exercise') {
+            return { exercise: state?.exercise ?? 'unknown' };
+          }
+          if (name === 'is_person_in_view') {
+            return { in_view: state?.telemetry.isBodyVisible ?? false };
+          }
+          if (name === 'get_checkpoint') {
+            return { phase: state?.telemetry.currentPhase ?? 'idle', score: state?.telemetry.currentScore ?? 0 };
           }
           return { error: `Unknown function: ${name}` };
         },
@@ -166,8 +186,19 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
     if (!state) return;
     const payload = data.payload ?? {};
     state.batchCount++;
-    const repCount = payload.workout_status?.rep_count ?? 0;
+    const ws_status = payload.workout_status ?? {};
+    const repCount = ws_status.rep_count ?? 0;
     state.totalReps = Math.max(state.totalReps, repCount);
+
+    // Update telemetry for getter tools
+    state.telemetry = {
+      repCount,
+      currentPhase: ws_status.current_phase ?? 'idle',
+      currentScore: ws_status.current_score ?? 0,
+      holdDuration: ws_status.hold_duration ?? 0,
+      isBodyVisible: ws_status.is_body_visible ?? false,
+      formIssues: ws_status.form_issues ?? [],
+    };
 
     if (state.gemini && (payload.form_events?.length || payload.angle_values)) {
       const context = buildCoachingPrompt({
@@ -218,6 +249,15 @@ export async function handleWebSocketClose(ws: ServerWebSocket<{ session: Sessio
   ws.data.session = null;
 }
 
+interface WorkoutTelemetry {
+  repCount: number;
+  currentPhase: string;
+  currentScore: number;
+  holdDuration: number;
+  isBodyVisible: boolean;
+  formIssues: string[];
+}
+
 interface SessionState {
   sessionId: string;
   exercise: string;
@@ -226,4 +266,5 @@ interface SessionState {
   batchCount: number;
   totalReps: number;
   gemini: GeminiLiveSession | null;
+  telemetry: WorkoutTelemetry;
 }

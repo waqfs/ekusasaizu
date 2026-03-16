@@ -64,6 +64,22 @@ export class GeminiLiveSession {
                     required: ['exercise_id'],
                   },
                 },
+                {
+                  name: 'get_rep_count',
+                  description: 'Get the current rep count for the active exercise.',
+                },
+                {
+                  name: 'get_exercise',
+                  description: 'Get the currently set exercise ID.',
+                },
+                {
+                  name: 'is_person_in_view',
+                  description: 'Check whether the person is currently visible in the camera according to MediaPipe pose detection.',
+                },
+                {
+                  name: 'get_checkpoint',
+                  description: 'Get the current stage/checkpoint the person is on according to MediaPipe pose tracking (e.g. top, descending, bottom, ascending).',
+                },
               ],
             },
           ],
