@@ -151,10 +151,17 @@ export function Live() {
     }
   }, [workout.repCount, repGoal]);
 
-  // Forward form events to coaching session
+  // Forward form events to coaching session + alert Gemini on bad form
   useEffect(() => {
     for (const event of workout.events) {
       coaching.addFormEvent(event);
+      if (event.type === 'bad_form_alert') {
+        coaching.sendChat(
+          `[SYSTEM] Bad form detected on rep ${workout.repCount} (score: ${event.score ?? 0}). Issues: ${
+            event.message ?? 'unknown'
+          }. Please give a brief correction.`,
+        );
+      }
     }
   }, [workout.events]);
 
@@ -212,7 +219,7 @@ export function Live() {
           }
           setMessages(prev => [...prev, { from: 'agent', text: `Switching to ${exerciseConfig?.name || exerciseId}...` }]);
         },
-        onSetRepGoal: (count) => {
+        onSetRepGoal: count => {
           setRepGoal(count);
           goalNotifiedRef.current = false;
           setMessages(prev => [...prev, { from: 'agent', text: `Rep goal set to ${count}` }]);
@@ -360,7 +367,8 @@ export function Live() {
                     <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-stone-950/80 backdrop-blur-sm border border-stone-700 rounded-lg px-6 py-2 text-center">
                       <p class="text-xs text-stone-400">{repGoal > 0 ? 'Goal' : 'Reps'}</p>
                       <p class="text-3xl font-bold text-stone-100">
-                        {workout.repCount}{repGoal > 0 ? <span class="text-lg text-stone-400">/{repGoal}</span> : null}
+                        {workout.repCount}
+                        {repGoal > 0 ? <span class="text-lg text-stone-400">/{repGoal}</span> : null}
                       </p>
                     </div>
                   )}

@@ -140,6 +140,16 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
               };
               repHistory = [...repHistory.slice(-9), snapshot]; // keep last 10
               lastSnapshotRepRef.current = repCount;
+
+              // Flag extremely bad form for proactive coaching (score < 40 or 3+ issues)
+              if (newScore < 40 || snapshot.formIssues.length >= 3) {
+                events.push({
+                  type: 'bad_form_alert',
+                  score: newScore,
+                  message: snapshot.formIssues.length > 0 ? snapshot.formIssues.join(', ') : 'very low score',
+                });
+              }
+
               // Reset for next rep
               repPhaseAnglesRef.current = {};
               repIssuesRef.current = new Set();
