@@ -1,16 +1,22 @@
 import { useState, useCallback, useRef, useMemo } from 'preact/hooks';
-import type { NormalizedLandmark, FormEvent, WorkoutState } from './types';
+import type { NormalizedLandmark, FormEvent, WorkoutState, RepSnapshot } from './types';
 import { ConfigDrivenAnalyzer, type ExerciseConfig } from './configAnalyzer';
 import { isBodyVisible, isPoseHumanSized } from './landmarks';
 
 // Landmark index to human-readable body part name
 const LANDMARK_NAMES: Record<number, string> = {
-  11: 'left shoulder', 12: 'right shoulder',
-  13: 'left elbow', 14: 'right elbow',
-  15: 'left wrist', 16: 'right wrist',
-  23: 'left hip', 24: 'right hip',
-  25: 'left knee', 26: 'right knee',
-  27: 'left ankle', 28: 'right ankle',
+  11: 'left shoulder',
+  12: 'right shoulder',
+  13: 'left elbow',
+  14: 'right elbow',
+  15: 'left wrist',
+  16: 'right wrist',
+  23: 'left hip',
+  24: 'right hip',
+  25: 'left knee',
+  26: 'right knee',
+  27: 'left ankle',
+  28: 'right ankle',
 };
 
 /** Check which required body part groups are not visible */
@@ -39,6 +45,7 @@ const INITIAL_STATE: WorkoutState = {
   angleValues: {},
   repCycleIndex: 0,
   missingBodyParts: [],
+  repHistory: [],
 };
 
 /**
@@ -48,6 +55,10 @@ const INITIAL_STATE: WorkoutState = {
 export function useWorkoutFormState(config: ExerciseConfig | null) {
   const [state, setState] = useState<WorkoutState>(INITIAL_STATE);
   const holdStartRef = useRef<number>(0);
+  const repStartRef = useRef<number>(performance.now());
+  const repPhaseAnglesRef = useRef<Record<string, Record<string, number>>>({});
+  const repIssuesRef = useRef<Set<string>>(new Set());
+  const lastSnapshotRepRef = useRef<number>(0);
 
   const analyzer = useMemo(() => {
     if (!config) return null;
@@ -82,7 +93,12 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
       if (!isBodyVisible(landmarks, CORE_LANDMARKS, 0.3)) {
         // Determine which required landmark groups are missing
         const missing = getMissingBodyParts(landmarks, config);
-        setState(s => ({ ...s, isBodyVisible: false, missingBodyParts: missing, formIssues: missing.length > 0 ? [`Not visible: ${missing.join(', ')}`] : ['Some body parts are not visible — adjust camera'] }));
+        setState(s => ({
+          ...s,
+          isBodyVisible: false,
+          missingBodyParts: missing,
+          formIssues: missing.length > 0 ? [`Not visible: ${missing.join(', ')}`] : ['Some body parts are not visible — adjust camera'],
+        }));
         return;
       }
 
@@ -97,8 +113,14 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
       const issues: string[] = [];
       const angleValues = analyzer.getAngleValues();
 
+      // Record angles at current phase for per-rep tracking
+      const phase = analyzer.phase;
+      if (phase && phase !== 'idle') {
+        repPhaseAnglesRef.current[phase] = { ...angleValues };
+      }
+
       setState(prev => {
-        let { repCount, currentPhase, holdDuration } = prev;
+        let { repCount, currentPhase, holdDuration, repHistory } = prev;
         let newScore = 0;
 
         for (const event of events) {
@@ -106,12 +128,32 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
             repCount = analyzer.repCount;
             newScore = event.score ?? 0;
             currentPhase = analyzer.phase;
+
+            // Snapshot this rep if not already captured
+            if (repCount > lastSnapshotRepRef.current) {
+              const snapshot: RepSnapshot = {
+                repNumber: repCount,
+                score: newScore,
+                phaseAngles: { ...repPhaseAnglesRef.current },
+                formIssues: [...repIssuesRef.current],
+                durationMs: Math.round(performance.now() - repStartRef.current),
+              };
+              repHistory = [...repHistory.slice(-9), snapshot]; // keep last 10
+              lastSnapshotRepRef.current = repCount;
+              // Reset for next rep
+              repPhaseAnglesRef.current = {};
+              repIssuesRef.current = new Set();
+              repStartRef.current = performance.now();
+            }
           } else if (event.type === 'good_form') {
             if (issues.length === 0) issues.push('Good form — keep it up!');
           } else {
             // Look up message for this event type
             const msg = messageMap.get(event.type);
-            if (msg) issues.push(msg);
+            if (msg) {
+              issues.push(msg);
+              repIssuesRef.current.add(event.type);
+            }
           }
         }
 
@@ -138,6 +180,7 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
           events,
           angleValues,
           repCycleIndex: analyzer.phaseIndex,
+          repHistory,
         };
       });
     },
@@ -147,6 +190,10 @@ export function useWorkoutFormState(config: ExerciseConfig | null) {
   const reset = useCallback(() => {
     setState(INITIAL_STATE);
     holdStartRef.current = 0;
+    repStartRef.current = performance.now();
+    repPhaseAnglesRef.current = {};
+    repIssuesRef.current = new Set();
+    lastSnapshotRepRef.current = 0;
     analyzer?.reset();
   }, [analyzer]);
 

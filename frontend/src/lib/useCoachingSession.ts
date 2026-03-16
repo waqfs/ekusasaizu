@@ -48,6 +48,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
   const latestWorkoutRef = useRef<WorkoutState | null>(null);
   const latestAngleValuesRef = useRef<Record<string, number>>({});
   const callbacksRef = useRef<CoachingCallbacks | null>(null);
+  const lastSentRepRef = useRef<number>(0);
   const sessionIdRef = useRef<string | null>(null);
 
   const connect = useCallback(
@@ -162,6 +163,12 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
     const workout = latestWorkoutRef.current;
     if (!workout) return;
 
+    // Only send reps not yet sent
+    const newReps = (workout.repHistory ?? []).filter(r => r.repNumber > lastSentRepRef.current);
+    if (newReps.length > 0) {
+      lastSentRepRef.current = newReps[newReps.length - 1].repNumber;
+    }
+
     const payload = {
       session_id: sessionIdRef.current || '',
       exercise,
@@ -179,6 +186,7 @@ export function useCoachingSession(options: UseCoachingSessionOptions) {
         missing_body_parts: workout.missingBodyParts,
       },
       angle_values: latestAngleValuesRef.current,
+      rep_history: newReps,
     };
 
     ws.send(JSON.stringify({ type: 'batch', payload }));

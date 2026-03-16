@@ -74,11 +74,18 @@ export class GeminiLiveSession {
                 },
                 {
                   name: 'is_person_in_view',
-                  description: 'Check whether the person is currently visible in the camera for the active exercise. If not in view, returns which body regions are required.',
+                  description:
+                    'Check whether the person is currently visible in the camera for the active exercise. If not in view, returns which body regions are required.',
                 },
                 {
                   name: 'get_checkpoint',
-                  description: 'Get the current stage/checkpoint the person is on according to MediaPipe pose tracking (e.g. top, descending, bottom, ascending).',
+                  description:
+                    'Get the current stage/checkpoint the person is on according to MediaPipe pose tracking (e.g. top, descending, bottom, ascending).',
+                },
+                {
+                  name: 'get_form',
+                  description:
+                    'Get detailed form analysis for the current exercise: per-rep scores, joint angles at key phases, recurring form issues, and trend data. Use this to give specific form improvement advice or when the user asks about their form.',
                 },
               ],
             },
@@ -123,11 +130,13 @@ export class GeminiLiveSession {
             .then(result => {
               console.log('Sending tool response:', JSON.stringify({ id: fc.id, name: fc.name, result }));
               this.session?.sendToolResponse({
-                functionResponses: [{
-                  id: fc.id,
-                  name: fc.name,
-                  response: result,
-                }],
+                functionResponses: [
+                  {
+                    id: fc.id,
+                    name: fc.name,
+                    response: result,
+                  },
+                ],
               });
             })
             .catch(err => {
