@@ -101,6 +101,9 @@ class GeminiLiveSession:
                 )
             ),
             tools=_build_tools(),
+            generation_config=types.GenerationConfig(
+                thinking_config=types.ThinkingConfig(thinking_budget=0),
+            ),
         )
         self._config = config
 
