@@ -59,6 +59,20 @@ export function Live() {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextPlayTimeRef = useRef<number>(0);
+  const audioSourcesRef = useRef<Set<AudioBufferSourceNode>>(new Set());
+  const [agentSpeaking, setAgentSpeaking] = useState(false);
+
+  // Interrupt all queued/playing audio
+  const interruptAudio = useCallback(() => {
+    for (const src of audioSourcesRef.current) {
+      try { src.stop(); } catch { /* already stopped */ }
+    }
+    audioSourcesRef.current.clear();
+    if (audioContextRef.current) {
+      nextPlayTimeRef.current = audioContextRef.current.currentTime;
+    }
+    setAgentSpeaking(false);
+  }, []);
 
   // Play PCM audio response from Gemini (24kHz, 16-bit little-endian)
   // Uses a scheduling queue to play chunks sequentially without overlap
@@ -87,15 +101,30 @@ export function Live() {
       source.buffer = buffer;
       source.connect(ctx.destination);
 
+      // Track source for interruption
+      audioSourcesRef.current.add(source);
+      source.onended = () => {
+        audioSourcesRef.current.delete(source);
+        if (audioSourcesRef.current.size === 0) setAgentSpeaking(false);
+      };
+
       // Schedule chunk to play after any previously queued chunks
       const now = ctx.currentTime;
       const startTime = Math.max(now, nextPlayTimeRef.current);
       source.start(startTime);
       nextPlayTimeRef.current = startTime + buffer.duration;
+      setAgentSpeaking(true);
     } catch (err) {
       console.error('Audio playback error:', err);
     }
   }, []);
+
+  // Interrupt playback when user starts speaking while agent is talking
+  useEffect(() => {
+    if (audio.isSpeaking && agentSpeaking) {
+      interruptAudio();
+    }
+  }, [audio.isSpeaking, agentSpeaking]);
 
   // Process landmarks through the workout analyzer
   useEffect(() => {
@@ -168,6 +197,9 @@ export function Live() {
             setConfig(exerciseConfig as ExerciseConfig);
           }
           setMessages(prev => [...prev, { from: 'agent', text: `Switching to ${exerciseConfig?.name || exerciseId}...` }]);
+        },
+        onInterrupted: () => {
+          interruptAudio();
         },
       });
       // Audio capture starts after session_started confirms Gemini is connected (see useEffect below)

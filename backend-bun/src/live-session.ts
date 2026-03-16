@@ -86,6 +86,9 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
           console.error(`Gemini error [${sessionId}]: ${message}`);
           ws.send(JSON.stringify({ type: 'error', message }));
         },
+        onInterrupted: () => {
+          ws.send(JSON.stringify({ type: 'interrupted' }));
+        },
         onFunctionCall: async (name: string, args: Record<string, any>) => {
           if (name === 'set_exercise') {
             const exerciseId = args.exercise_id ?? '';

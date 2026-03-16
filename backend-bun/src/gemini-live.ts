@@ -17,6 +17,7 @@ export interface GeminiCallbacks {
   onAudio: (b64Audio: string) => void;
   onText: (text: string) => void;
   onError: (message: string) => void;
+  onInterrupted?: () => void;
   onFunctionCall?: (name: string, args: Record<string, any>) => Promise<Record<string, any>>;
   onInputTranscript?: (text: string) => void;
   onOutputTranscript?: (text: string) => void;
@@ -75,6 +76,11 @@ export class GeminiLiveSession {
   private handleMessage(msg: any): void {
     const sc = msg?.serverContent;
     if (!sc) return;
+
+    // Handle server-side interruption (user started speaking while Gemini was talking)
+    if (sc.interrupted) {
+      this.callbacks.onInterrupted?.();
+    }
 
     // Handle audio + text from model turns
     if (sc.modelTurn?.parts) {
