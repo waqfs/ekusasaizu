@@ -1,17 +1,16 @@
-import { useState, useEffect, useRef } from 'preact/hooks';
+import { useState, useEffect, useRef, useCallback } from 'preact/hooks';
 import { useLocation } from 'preact-iso';
 import { DashboardLayout } from '@component/DashboardLayout.jsx';
 import { PoseOverlay } from '@component/PoseOverlay.jsx';
 import { useCameraSession } from '../../lib/useCameraSession';
 import { usePoseStream } from '../../lib/usePoseStream';
 import { useWorkoutFormState } from '../../lib/useWorkoutFormState';
+import { useCoachingSession } from '../../lib/useCoachingSession';
+import { useAudioCapture } from '../../lib/useAudioCapture';
 import { fetchExerciseConfig } from '../../lib/api';
 import type { ExerciseConfig } from '../../lib/configAnalyzer';
 
-const mockMessages = [
-  { from: 'agent', text: "Welcome! Enable your camera and I'll start tracking your form." },
-  { from: 'agent', text: 'MediaPipe Pose Landmarker will detect 33 body keypoints in real time.' },
-];
+const mockMessages = [{ from: 'agent', text: "Hey! I'm Kora, your AI exercise coach. Enable your camera to start, or ask me about exercises!" }];
 
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
@@ -21,9 +20,12 @@ function formatTime(seconds: number) {
 
 export function Live() {
   const { query } = useLocation();
-  const exerciseId = query.exercise ?? 'squat';
+  const initialExerciseId = query.exercise ?? 'squat';
 
-  // Exercise config loaded from backend
+  // Active exercise — can be changed by Gemini via set_exercise
+  const [activeExerciseId, setActiveExerciseId] = useState(initialExerciseId);
+
+  // Exercise config loaded from backend or pushed via Gemini
   const [config, setConfig] = useState<ExerciseConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
   const [configError, setConfigError] = useState<string | null>(null);
@@ -31,17 +33,21 @@ export function Live() {
   useEffect(() => {
     setConfigLoading(true);
     setConfigError(null);
-    fetchExerciseConfig(exerciseId)
+    fetchExerciseConfig(activeExerciseId)
       .then(setConfig)
       .catch(err => setConfigError(err.message))
       .finally(() => setConfigLoading(false));
-  }, [exerciseId]);
+  }, [activeExerciseId]);
 
-  const exerciseName = config?.name ?? exerciseId.charAt(0).toUpperCase() + exerciseId.slice(1);
+  const exerciseName = config?.name ?? activeExerciseId.charAt(0).toUpperCase() + activeExerciseId.slice(1);
 
   const camera = useCameraSession();
   const pose = usePoseStream(camera.videoRef);
   const workout = useWorkoutFormState(config);
+
+  const geminiApiKey = typeof localStorage !== 'undefined' ? localStorage.getItem('gemini_api_key') || '' : '';
+  const coaching = useCoachingSession({ exercise: activeExerciseId, geminiApiKey });
+  const audio = useAudioCapture();
 
   const [micOn, setMicOn] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -51,11 +57,63 @@ export function Live() {
   const timerRef = useRef<ReturnType<typeof setInterval>>();
   const containerRef = useRef<HTMLDivElement>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const nextPlayTimeRef = useRef<number>(0);
+
+  // Play PCM audio response from Gemini (24kHz, 16-bit little-endian)
+  // Uses a scheduling queue to play chunks sequentially without overlap
+  const playAudio = useCallback((pcmB64: string) => {
+    try {
+      const binary = atob(pcmB64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+
+      const sampleRate = 24000;
+      const int16 = new Int16Array(bytes.buffer);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) float32[i] = int16[i] / 32768;
+
+      if (!audioContextRef.current || audioContextRef.current.state === 'closed') {
+        audioContextRef.current = new AudioContext({ sampleRate });
+        nextPlayTimeRef.current = 0;
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const buffer = ctx.createBuffer(1, float32.length, sampleRate);
+      buffer.getChannelData(0).set(float32);
+
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+
+      // Schedule chunk to play after any previously queued chunks
+      const now = ctx.currentTime;
+      const startTime = Math.max(now, nextPlayTimeRef.current);
+      source.start(startTime);
+      nextPlayTimeRef.current = startTime + buffer.duration;
+    } catch (err) {
+      console.error('Audio playback error:', err);
+    }
+  }, []);
 
   // Process landmarks through the workout analyzer
   useEffect(() => {
     workout.processLandmarks(pose.landmarks);
   }, [pose.landmarks]);
+
+  // Keep coaching session updated with latest workout state and angles
+  useEffect(() => {
+    coaching.updateWorkoutState(workout);
+    coaching.updateAngleValues(workout.angleValues);
+  }, [workout.repCount, workout.currentPhase, workout.formIssues, workout.isBodyVisible]);
+
+  // Forward form events to coaching session
+  useEffect(() => {
+    for (const event of workout.events) {
+      coaching.addFormEvent(event);
+    }
+  }, [workout.events]);
 
   // Update video dimensions when available
   useEffect(() => {
@@ -83,11 +141,52 @@ export function Live() {
     if (camera.isActive) {
       pose.stopDetection();
       camera.stop();
+      coaching.disconnect();
+      if (micOn) {
+        audio.stop();
+        setMicOn(false);
+      }
     } else {
       await camera.start();
       if (!pose.isReady && !pose.isLoading) {
         pose.initWorker();
       }
+      // Connect to coaching session
+      coaching.connect({
+        onTranscript: (role, text) => {
+          setMessages(prev => [...prev, { from: role === 'agent' ? 'agent' : 'user', text }]);
+        },
+        onAudioChunk: pcmB64 => {
+          playAudio(pcmB64);
+        },
+        onAudioEnd: () => {
+          nextPlayTimeRef.current = 0;
+        },
+        onSetExercise: (exerciseId, exerciseConfig) => {
+          setActiveExerciseId(exerciseId);
+          if (exerciseConfig) {
+            setConfig(exerciseConfig as ExerciseConfig);
+          }
+          setMessages(prev => [...prev, { from: 'agent', text: `Switching to ${exerciseConfig?.name || exerciseId}...` }]);
+        },
+      }); // Auto-start microphone for Gemini Live audio
+      audio.start(chunk => {
+        coaching.sendAudioChunk(chunk);
+      });
+      setMicOn(true);
+    }
+  };
+
+  // Mic toggle
+  const handleMicToggle = () => {
+    if (micOn) {
+      audio.stop();
+      setMicOn(false);
+    } else {
+      audio.start(chunk => {
+        coaching.sendAudioChunk(chunk);
+      });
+      setMicOn(true);
     }
   };
 
@@ -95,33 +194,8 @@ export function Live() {
   useEffect(() => {
     if (camera.isActive && pose.isReady) {
       pose.startDetection();
-      setMessages(prev => [...prev, { from: 'agent', text: `Pose model loaded! Tracking your ${exerciseName} form now.` }]);
     }
   }, [camera.isActive, pose.isReady]);
-
-  // Add form feedback to chat (debounced — max one message every 3s)
-  const lastIssueRef = useRef('');
-  const lastIssueTimeRef = useRef(0);
-  useEffect(() => {
-    if (workout.formIssues.length > 0 && workout.isBodyVisible) {
-      const issue = workout.formIssues[0];
-      const now = Date.now();
-      if (issue !== lastIssueRef.current && now - lastIssueTimeRef.current > 3000) {
-        lastIssueRef.current = issue;
-        lastIssueTimeRef.current = now;
-        setMessages(prev => [...prev, { from: 'agent', text: issue }]);
-      }
-    }
-  }, [workout.formIssues, workout.isBodyVisible]);
-
-  // Announce rep completions
-  const lastRepRef = useRef(0);
-  useEffect(() => {
-    if (workout.repCount > lastRepRef.current) {
-      lastRepRef.current = workout.repCount;
-      setMessages(prev => [...prev, { from: 'agent', text: `Rep ${workout.repCount} complete! Score: ${workout.currentScore}` }]);
-    }
-  }, [workout.repCount]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -131,13 +205,22 @@ export function Live() {
   const handleSendMessage = (e: Event) => {
     e.preventDefault();
     if (!chatInput.trim()) return;
-    setMessages([...messages, { from: 'user', text: chatInput }]);
+    const text = chatInput.trim();
+    setMessages(prev => [...prev, { from: 'user', text }]);
     setChatInput('');
+
+    // Send through WebSocket if connected
+    if (coaching.isConnected) {
+      coaching.sendChat(text);
+    }
   };
 
   const handleEndSession = () => {
     pose.destroy();
     camera.stop();
+    coaching.disconnect();
+    audio.stop();
+    audioContextRef.current?.close();
   };
 
   const isHoldExercise = config?.type === 'hold';
@@ -304,7 +387,7 @@ export function Live() {
                   Camera {camera.isActive ? 'On' : 'Off'}
                 </button>
                 <button
-                  onClick={() => setMicOn(!micOn)}
+                  onClick={handleMicToggle}
                   class={`flex items-center gap-2 px-4 py-2.5 text-sm font-light tracking-wide transition-all ${
                     micOn ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-stone-800 text-stone-400 border border-stone-700'
                   }`}
@@ -347,6 +430,14 @@ export function Live() {
                 {workout.currentPhase !== 'idle' && (
                   <div class="px-3 py-1.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400">Phase: {workout.currentPhase}</div>
                 )}
+                <div
+                  class={`px-3 py-1.5 rounded-full text-xs font-medium ${
+                    coaching.isConnected ? 'bg-emerald-500/10 text-emerald-400' : 'bg-stone-800 text-stone-500'
+                  }`}
+                >
+                  {coaching.isConnected ? '● AI Connected' : '○ AI Offline'}
+                </div>
+                {micOn && audio.isSpeaking && <div class="px-3 py-1.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">🎤 Speaking</div>}
               </div>
             </div>
           </div>

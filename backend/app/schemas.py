@@ -46,6 +46,7 @@ class BatchPayload(BaseModel):
     form_events: list[FormEvent] = []
     workout_status: WorkoutStatus
     audio_chunk_b64: str | None = None  # base64-encoded audio chunk
+    angle_values: dict[str, float] = {}  # Current angle debug values from analyzer
 
 
 class SessionConfig(BaseModel):
@@ -56,6 +57,7 @@ class SessionConfig(BaseModel):
     audio_enabled: bool = False
     target_reps: int | None = None
     target_hold_seconds: int | None = None
+    gemini_api_key: str | None = None  # User-provided API key (optional)
 
 
 class SessionStartResponse(BaseModel):
@@ -64,21 +66,31 @@ class SessionStartResponse(BaseModel):
 
 
 class GeminiRequest(BaseModel):
-    """Structured request to be sent to Gemini (logged only for now)."""
+    """Structured request to be sent to Gemini."""
 
     session_id: str
     exercise: str
     prompt: str
     pose_summary: dict
+    audio_chunk_b64: str | None = None  # Raw audio to send to Gemini
     audio_duration_seconds: float | None = None
+    audio_transcript: str | None = None
     rep_count: int = 0
     form_events: list[FormEvent] = []
+    angle_values: dict[str, float] = {}
+    has_meaningful_events: bool = (
+        False  # Whether this batch has events worth responding to
+    )
 
 
 class GeminiResponse(BaseModel):
-    """Structured response from Gemini (mock for now)."""
+    """Structured response from Gemini."""
 
     session_id: str
     coaching_text: str
     suggestions: list[str] = []
+    commands: list[
+        dict
+    ] = []  # e.g. [{"type": "start_exercise", "exercise_id": "squat"}]
+    audio_b64: str | None = None  # Base64 PCM audio response from Gemini
     score_adjustment: float | None = None

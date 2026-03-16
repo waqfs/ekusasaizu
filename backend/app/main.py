@@ -5,14 +5,7 @@ import logging
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
-from .schemas import SessionConfig, SessionStartResponse, BatchPayload
-from .live_session import (
-    create_session,
-    get_session,
-    end_session,
-    websocket_session_handler,
-)
-from .gemini import build_gemini_request, send_to_gemini
+from .live_session import websocket_session_handler
 from .exercise_loader import list_exercises, get_exercise_config
 
 logging.basicConfig(
@@ -59,54 +52,27 @@ async def get_exercise(exercise_id: str):
     return config
 
 
-@app.post("/api/session/start", response_model=SessionStartResponse)
-async def start_session(config: SessionConfig):
-    """Create a new coaching session and return its ID + config."""
-    return create_session(config)
-
-
-@app.post("/api/session/{session_id}/batch")
-async def receive_batch(session_id: str, payload: BatchPayload):
-    """Receive a batch of pose/audio/event data and return coaching response.
-
-    This is the REST alternative to the WebSocket flow — useful for testing
-    or clients that don't support WebSocket.
-    """
-    payload.session_id = session_id
-    session = get_session(session_id)
-    if not session:
-        return {"error": "Session not found"}
-
-    return await session.handle_batch(payload)
-
-
-@app.post("/api/session/{session_id}/end")
-async def stop_session(session_id: str):
-    """End a session and return summary."""
-    summary = end_session(session_id)
-    if not summary:
-        return {"error": "Session not found"}
-    return summary
-
-
 # --- WebSocket endpoint ---
 
 
 @app.websocket("/ws/session")
 async def ws_session(websocket: WebSocket):
-    """WebSocket endpoint for real-time coaching sessions.
+    """WebSocket endpoint for real-time coaching sessions with Gemini Live.
 
     Protocol:
     → { type: "start", config: SessionConfig }
-    ← { type: "session_started", session_id, config }
+    ← { type: "session_started", session_id, config, gemini_connected }
+
+    → { type: "chat", text: string }
+    ← { type: "transcript", role: "user"|"agent", text }
+
+    → { type: "audio_chunk", pcm16_b64, sample_rate_hz: 16000 }
+    ← { type: "audio_chunk", pcm16_b64, sample_rate_hz: 24000, channels: 1 }
 
     → { type: "batch", payload: BatchPayload }
-    ← { type: "coaching", text, suggestions, batch_number }
+    ← { type: "batch_ack", batch_number }
 
     → { type: "end" }
     ← { type: "session_ended", summary }
-
-    → { type: "ping" }
-    ← { type: "pong" }
     """
     await websocket_session_handler(websocket)

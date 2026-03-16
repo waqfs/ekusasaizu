@@ -116,8 +116,44 @@ function ProfileSettings() {
 }
 
 function AgentSettings() {
+  const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
+  const [saved, setSaved] = useState(false);
+
+  const handleSaveApiKey = () => {
+    if (apiKey.trim()) {
+      localStorage.setItem('gemini_api_key', apiKey.trim());
+    } else {
+      localStorage.removeItem('gemini_api_key');
+    }
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  };
+
   return (
     <div class="max-w-2xl space-y-6">
+      {/* Gemini API Key */}
+      <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-stone-200 mb-2">Gemini API Key</h3>
+        <p class="text-xs text-stone-500 mb-4">
+          Provide your own Gemini API key for AI coaching. If empty, the server's default key will be used (if configured).
+        </p>
+        <div class="flex gap-2">
+          <input
+            type="password"
+            value={apiKey}
+            onInput={e => setApiKey((e.target as HTMLInputElement).value)}
+            placeholder="AIza..."
+            class="flex-1 px-4 py-2.5 rounded-lg bg-stone-800 border border-stone-700 text-stone-100 font-mono text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition-colors"
+          />
+          <button
+            onClick={handleSaveApiKey}
+            class="px-4 py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-stone-950 font-medium text-sm transition-colors"
+          >
+            {saved ? '✓ Saved' : 'Save'}
+          </button>
+        </div>
+      </div>
+
       <div class="bg-stone-900/30 border border-stone-800/30 rounded-lg p-6">
         <h3 class="text-lg font-semibold text-stone-200 mb-6">Agent Behavior</h3>
 
