@@ -169,13 +169,21 @@ export function Live() {
           }
           setMessages(prev => [...prev, { from: 'agent', text: `Switching to ${exerciseConfig?.name || exerciseId}...` }]);
         },
-      }); // Auto-start microphone for Gemini Live audio
+      });
+      // Audio capture starts after session_started confirms Gemini is connected (see useEffect below)
+    }
+  };
+
+  // Start mic capture once Gemini is confirmed connected — avoids dropping audio
+  // during the multi-second session startup window
+  useEffect(() => {
+    if (coaching.geminiConnected && camera.isActive && !micOn) {
       audio.start(chunk => {
         coaching.sendAudioChunk(chunk);
       });
       setMicOn(true);
     }
-  };
+  }, [coaching.geminiConnected, camera.isActive]);
 
   // Mic toggle
   const handleMicToggle = () => {

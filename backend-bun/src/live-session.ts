@@ -156,7 +156,8 @@ export async function handleWebSocketMessage(ws: ServerWebSocket<{ session: Sess
     if (!state?.gemini) return;
     const pcm16B64 = data.pcm16_b64;
     if (pcm16B64) {
-      await state.gemini.sendAudio(pcm16B64);
+      // Fire-and-forget — don't await to prevent backpressure on rapid audio chunks
+      state.gemini.sendAudio(pcm16B64);
     }
   } else if (msgType === 'batch') {
     if (!state) return;
