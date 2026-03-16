@@ -444,7 +444,7 @@ export function Live() {
                     {configError && (
                       <div class="mb-4">
                         <p class="text-red-400 text-sm">Failed to load config: {configError}</p>
-                        <p class="text-stone-600 text-xs mt-1">Make sure the backend is running at localhost:8000</p>
+                        <p class="text-stone-600 text-xs mt-1">Make sure the backend is running</p>
                       </div>
                     )}
                     {!configLoading && !configError && (

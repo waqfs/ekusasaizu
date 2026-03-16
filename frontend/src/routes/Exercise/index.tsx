@@ -37,7 +37,7 @@ export function Exercise() {
         {error && (
           <div class="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
             <p class="text-red-400 text-sm">Failed to load exercises: {error}</p>
-            <p class="text-stone-500 text-xs mt-1">Make sure the backend is running at localhost:8000</p>
+            <p class="text-stone-500 text-xs mt-1">Make sure the backend is running</p>
           </div>
         )}
 
