@@ -65,7 +65,11 @@ export function Live() {
   // Interrupt all queued/playing audio
   const interruptAudio = useCallback(() => {
     for (const src of audioSourcesRef.current) {
-      try { src.stop(); } catch { /* already stopped */ }
+      try {
+        src.stop();
+      } catch {
+        /* already stopped */
+      }
     }
     audioSourcesRef.current.clear();
     if (audioContextRef.current) {

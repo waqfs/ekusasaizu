@@ -9,7 +9,7 @@
  * Audio output: 24 kHz mono PCM16 LE
  */
 
-import { GoogleGenAI, Modality, type Session } from '@google/genai';
+import { GoogleGenAI, Modality, Type, type Session } from '@google/genai';
 
 const LIVE_MODEL = 'gemini-2.5-flash-native-audio-preview-12-2025';
 
@@ -46,6 +46,27 @@ export class GeminiLiveSession {
           systemInstruction: this.systemInstruction,
           inputAudioTranscription: {},
           outputAudioTranscription: {},
+          tools: [
+            {
+              functionDeclarations: [
+                {
+                  name: 'set_exercise',
+                  description:
+                    'Switch the client to a different exercise. Call this when the user wants to change exercises or you want to recommend a new exercise.',
+                  parameters: {
+                    type: Type.OBJECT,
+                    properties: {
+                      exercise_id: {
+                        type: Type.STRING,
+                        description: "The exercise ID to switch to (e.g. 'squat', 'lat_pull_down').",
+                      },
+                    },
+                    required: ['exercise_id'],
+                  },
+                },
+              ],
+            },
+          ],
         },
         callbacks: {
           onopen: () => {
@@ -75,6 +96,31 @@ export class GeminiLiveSession {
 
   private handleMessage(msg: any): void {
     const sc = msg?.serverContent;
+
+    // Handle tool calls — these come at the top level, separate from serverContent
+    if (msg?.toolCall?.functionCalls) {
+      console.log('Gemini tool call:', JSON.stringify(msg.toolCall));
+      for (const fc of msg.toolCall.functionCalls) {
+        if (this.callbacks.onFunctionCall) {
+          this.callbacks
+            .onFunctionCall(fc.name, fc.args ?? {})
+            .then(result => {
+              console.log('Sending tool response:', JSON.stringify({ id: fc.id, name: fc.name, result }));
+              this.session?.sendToolResponse({
+                functionResponses: [{
+                  id: fc.id,
+                  name: fc.name,
+                  response: result,
+                }],
+              });
+            })
+            .catch(err => {
+              console.error('Function call handler error:', err);
+            });
+        }
+      }
+    }
+
     if (!sc) return;
 
     // Handle server-side interruption (user started speaking while Gemini was talking)
@@ -99,30 +145,6 @@ export class GeminiLiveSession {
     }
     if (sc.outputTranscription?.text) {
       this.callbacks.onOutputTranscript?.(sc.outputTranscription.text);
-    }
-
-    // Handle tool calls
-    if (msg?.toolCall?.functionCalls) {
-      for (const fc of msg.toolCall.functionCalls) {
-        if (this.callbacks.onFunctionCall) {
-          this.callbacks
-            .onFunctionCall(fc.name, fc.args ?? {})
-            .then(result => {
-              this.session?.sendToolResponse({
-                functionResponses: [
-                  {
-                    id: fc.id,
-                    name: fc.name,
-                    response: result,
-                  },
-                ],
-              });
-            })
-            .catch(err => {
-              console.error('Function call handler error:', err);
-            });
-        }
-      }
     }
   }
 
