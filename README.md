@@ -1,6 +1,24 @@
+## Ekusasaizu
+
+Ekusasaizu is a real-time AI exercise coaching application. A user performs exercises in front of their webcam while an AI coach (backed by Google Gemini) provides voice coaching with form corrections, rep counting, and motivational guidance in real-time.
+
+### Architecture
+
+The frontend is built with web technology: Preact, Tailwind CSS, Vite, and of course, TypeScript. Included on the frontend is Google's MediaPipe to perform pose detection, so your camera feed is only read locally on your machine and never sent to any server for processing.
+
+> The frontend of this project also contains demo routes (hidden from the user) for testing models which includes [TensorFlow Pose Detection](https://www.npmjs.com/package/@tensorflow-models/pose-detection), but this is not used in the final demonstration.
+
+The backend runs on Bun, using Google's GenAI SDK to communicate with Gemini 2.5 Flash Live for instantaneous voice I/O. The backend connects with the frontend and Gemini through the use of websockets.
+
+> <img src="./ARCHITECTURE.png" />
+
+Gemini is given access to tools that let it get real-time data such as the current rep count, current exercise, whether you are in view, and your current and past forms, and also let Gemini control the frontend client by setting the active exercise (which configures MediaPipe), and setting rep goals, all controllable by the users voice.
+
 ### Deployment Steps
 
-1. Install the [`gcloud`](https://cloud.google.com/cli) and [`firebase`](https://firebase.google.com/docs/cli/) CLI tools (Firebase is an optional step in this process, our frontend can be hosted anywhere)
+> An auto deployment script for the backend (for MacOS/Linux) is available in [auto_deploy.sh](./auto_deploy.sh). Note that you must install `gcloud` beforehand.
+
+1. Install the [`gcloud`](https://cloud.google.com/cli) and [`firebase`](https://firebase.google.com/docs/cli/) CLI tools (Firebase is an optional step in this process; our frontend can be hosted anywhere)
 2. Authenticate both tools:
 
 ```zsh
@@ -84,3 +102,9 @@ VITE_BASE_PATH=/repo_name/ VITE_API_URL=https://project-backend-XXXXXX.us-centra
 ```
 
 > You will have to provide `VITE_BASE_PATH=/repo_name/` for the project to work as root on a custom path of the domain.
+
+### Copying
+
+This project is licensed under GPL-3.0 which, at a high level, allows you to commercially use, distribute, modify, patent, and use privately under the conditions that the copy is also under the GPL-3.0 license, discloses the source (this repository), and states the changes made. See [COPYING](./COPYING) for the actual permissions, conditions, and limitations.
+
+Developed by Connor Walmsley [@waqfs](https://github.com/waqfs) and Rishik Panjugala [@rishiksaip](https://github.com/rishiksaip) for the [Gemini Live Agent Challenge](https://geminiliveagentchallenge.devpost.com) sponsored by [Google Cloud](https://geminiliveagentchallenge.devpost.com).
