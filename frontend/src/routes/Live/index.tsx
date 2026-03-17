@@ -3,6 +3,7 @@ import { useLocation } from 'preact-iso';
 import { DashboardLayout } from '@component/DashboardLayout.jsx';
 import { PoseOverlay } from '@component/PoseOverlay.jsx';
 import { useCameraSession } from '../../lib/useCameraSession';
+import { p } from '../../lib/basePath';
 import { usePoseStream } from '../../lib/usePoseStream';
 import { useWorkoutFormState } from '../../lib/useWorkoutFormState';
 import { useCoachingSession } from '../../lib/useCoachingSession';
@@ -444,7 +445,7 @@ export function Live() {
                     {configError && (
                       <div class="mb-4">
                         <p class="text-red-400 text-sm">Failed to load config: {configError}</p>
-                        <p class="text-stone-600 text-xs mt-1">Make sure the backend is running at localhost:8000</p>
+                        <p class="text-stone-600 text-xs mt-1">Make sure the backend is running</p>
                       </div>
                     )}
                     {!configLoading && !configError && (
@@ -498,7 +499,7 @@ export function Live() {
                   Mic {micOn ? 'On' : 'Off'}
                 </button>
                 <a
-                  href="/exercise"
+                  href={p('/exercise')}
                   onClick={handleEndSession}
                   class="flex items-center gap-2 px-4 py-2.5 text-sm font-light tracking-wide bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-all"
                 >

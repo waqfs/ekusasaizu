@@ -1,8 +1,9 @@
 import { useLocation } from 'preact-iso';
+import { p } from '../lib/basePath';
 
 const navItems = [
   {
-    path: '/progress',
+    path: p('/progress'),
     label: 'Progress',
     icon: (
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -15,7 +16,7 @@ const navItems = [
     ),
   },
   {
-    path: '/exercise',
+    path: p('/exercise'),
     label: 'Exercises',
     icon: (
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -24,7 +25,7 @@ const navItems = [
     ),
   },
   {
-    path: '/live',
+    path: p('/live'),
     label: 'Live Session',
     icon: (
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -36,7 +37,7 @@ const navItems = [
     ),
   },
   {
-    path: '/settings',
+    path: p('/settings'),
     label: 'Settings',
     icon: (
       <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
@@ -57,7 +58,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
   return (
     <aside class="w-60 h-full bg-stone-950 md:bg-stone-950/80 border-r border-stone-800/30 flex flex-col shrink-0">
       <div class="px-6 py-8 flex items-center justify-between">
-        <a href="/" class="block">
+        <a href={p('/')} class="block">
           <span class="text-lg font-light tracking-wide text-amber-400">エクササイズ</span>
           <span class="block text-[10px] text-stone-600 tracking-[0.25em] uppercase mt-1">Ekusasaizu</span>
         </a>
@@ -95,7 +96,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
             <p class="text-[11px] text-stone-600 truncate">user@example.com</p>
           </div>
         </div>
-        <a href="/login" class="mt-3 block text-center text-[11px] tracking-widest uppercase text-stone-600 hover:text-stone-400 transition-colors">
+        <a href={p('/login')} class="mt-3 block text-center text-[11px] tracking-widest uppercase text-stone-600 hover:text-stone-400 transition-colors">
           Sign Out
         </a>
       </div>

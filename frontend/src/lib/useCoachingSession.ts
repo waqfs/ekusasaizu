@@ -1,7 +1,16 @@
 import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import type { NormalizedLandmark, FormEvent, WorkoutState } from './types';
 
-const WS_URL = `ws://${window.location.hostname}:8000/ws/session`;
+function getWsUrl(): string {
+  const base = import.meta.env.VITE_API_URL;
+  if (base) {
+    const wsBase = base.replace(/^http/, 'ws');
+    return `${wsBase}/ws/session`;
+  }
+  return `ws://${window.location.hostname}:8000/ws/session`;
+}
+
+const WS_URL = getWsUrl();
 
 interface ExerciseCommand {
   type: string;

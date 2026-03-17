@@ -11,21 +11,22 @@ import { RawDemo } from '@route/RawDemo/index.tsx';
 import { TwoPassDemo } from '@route/TwoPassDemo/index.tsx';
 import { Settings } from '@route/Settings/index.tsx';
 import { NotFound } from '@route/_404.tsx';
+import { p } from './lib/basePath';
 import './style.css';
 
 export function App() {
   return (
     <LocationProvider>
       <Router>
-        <Route path="/" component={Home} />
-        <Route path="/login" component={Login} />
-        <Route path="/progress" component={Progress} />
-        <Route path="/exercise" component={Exercise} />
-        <Route path="/live" component={Live} />
-        <Route path="/demo" component={Demo} />
-        <Route path="/raw-demo" component={RawDemo} />
-        <Route path="/two-pass" component={TwoPassDemo} />
-        <Route path="/settings" component={Settings} />
+        <Route path={p('/')} component={Home} />
+        <Route path={p('/login')} component={Login} />
+        <Route path={p('/progress')} component={Progress} />
+        <Route path={p('/exercise')} component={Exercise} />
+        <Route path={p('/live')} component={Live} />
+        <Route path={p('/demo')} component={Demo} />
+        <Route path={p('/raw-demo')} component={RawDemo} />
+        <Route path={p('/two-pass')} component={TwoPassDemo} />
+        <Route path={p('/settings')} component={Settings} />
         <Route default component={NotFound} />
       </Router>
     </LocationProvider>
